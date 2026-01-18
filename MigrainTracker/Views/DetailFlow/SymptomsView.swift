@@ -1,0 +1,110 @@
+//
+//  SymptomsView.swift
+//  MigrainTracker
+//
+//  Created by Linda Kötter on 16.01.26.
+//
+
+import SwiftUI
+
+struct SymptomsView: View {
+    @EnvironmentObject var settingsManager: SettingsManager
+    @Binding var symptoms: [String]
+    @State private var selectedSymptoms: Set<String> = []
+    
+    var body: some View {
+        VStack(spacing: Theme.Spacing.jumbo) {
+            Text("Which symptoms did you experience?")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .multilineTextAlignment(.center)
+                .padding(.top, Theme.Spacing.huge)
+            
+            if settingsManager.symptomsToDisplay.isEmpty {
+                // No symptoms configured
+                Spacer()
+                
+                VStack(spacing: Theme.Spacing.regular) {
+                    Image(systemName: "cross.case")
+                        .font(.system(size: 60))
+                        .foregroundColor(Theme.Colors.secondaryText)
+                    
+                    Text("No Symptoms Configured")
+                        .font(.headline)
+                    
+                    Text("Go to Settings to select your typical symptoms")
+                        .font(.subheadline)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    
+                    NavigationLink(destination: SymptomPickerView()) {
+                        Label("Go to Settings", systemImage: "gear")
+                            .padding(Theme.Spacing.regular)
+                            .background(Theme.Colors.primaryAction)
+                            .foregroundColor(Theme.Colors.inverseText)
+                            .cornerRadius(Theme.CornerRadius.medium)
+                    }
+                }
+                
+                Spacer()
+            } else {
+                // Show symptoms list
+                ScrollView {
+                    VStack(spacing: Theme.Spacing.medium) {
+                        ForEach(settingsManager.symptomsToDisplay, id: \.self) { symptom in
+                            SymptomRow(
+                                symptom: symptom,
+                                isSelected: selectedSymptoms.contains(symptom)
+                            ) {
+                                if selectedSymptoms.contains(symptom) {
+                                    selectedSymptoms.remove(symptom)
+                                } else {
+                                    selectedSymptoms.insert(symptom)
+                                }
+                                symptoms = Array(selectedSymptoms)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, Theme.Spacing.extraLarge)
+                }
+            }
+        }
+        .onAppear {
+            selectedSymptoms = Set(symptoms)
+        }
+    }
+}
+
+struct SymptomRow: View {
+    let symptom: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(symptom)
+                    .font(.body)
+                    .foregroundColor(isSelected ? Theme.Colors.inverseText : Theme.Colors.primaryText)
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(Theme.Colors.inverseText)
+                }
+            }
+            .padding(Theme.Spacing.regular)
+            .background(isSelected ? Theme.Colors.primaryAction : Theme.Colors.secondaryBackground)
+            .cornerRadius(Theme.CornerRadius.medium)
+        }
+    }
+}
+
+#Preview {
+    NavigationStack {
+        SymptomsView(symptoms: .constant(["Aura", "Nausea"]))
+            .environmentObject(SettingsManager())
+    }
+}
