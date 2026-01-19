@@ -10,6 +10,7 @@ import SwiftUI
 struct CalendarView: View {
     @EnvironmentObject var store: MigraineStore
     @EnvironmentObject var settings: SettingsManager
+    @AppStorage("promptForDetails") private var promptForDetails = true
     @Binding var selectedDate: Date?
     @Binding var selectedEvent: MigraineEvent?
     @Binding var showEventDetail: Bool
@@ -71,7 +72,9 @@ struct CalendarView: View {
                             isToday: calendar.isDateInToday(date),
                             isCurrentMonth: calendar.isDate(date, equalTo: currentMonth, toGranularity: .month)
                         ) {
-                            handleDayTap(date: date)
+                            if promptForDetails {
+                                handleDayTap(date: date)
+                            }
                         }
                     } else {
                         Color.clear

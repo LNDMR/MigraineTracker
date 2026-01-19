@@ -8,9 +8,20 @@
 import SwiftUI
 
 struct EventRow: View {
+    @AppStorage("promptForDetails") private var promptForDetails = true
     let event: MigraineEvent
     
     var body: some View {
+        if promptForDetails {
+            // Full mode - show details
+            detailedRow
+        } else {
+            // Minimal mode - just date
+            minimalRow
+        }
+    }
+    
+    private var detailedRow: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             // Header: Date and time of day
             HStack(spacing: Theme.Spacing.small) {
@@ -55,6 +66,19 @@ struct EventRow: View {
                         .lineLimit(1)
                 }
             }
+        }
+        .padding(Theme.Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Colors.secondaryBackground)
+        .cornerRadius(Theme.CornerRadius.large)
+    }
+    
+    private var minimalRow: some View {
+        HStack {
+            Text(event.loggedAt.formatted(date: .abbreviated, time: .omitted))
+                .font(.headline)
+            
+            Spacer()
         }
         .padding(Theme.Spacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import UniformTypeIdentifiers  // ← FIX: Import hinzufügen
+import UniformTypeIdentifiers
 
 struct BackupView: View {
     @EnvironmentObject var store: MigraineStore
@@ -31,9 +31,13 @@ struct BackupView: View {
                         .foregroundColor(Theme.Colors.secondaryText)                    }
                 }
             } header: {
-                Text("Automatic iCloud Backup")
-            } footer: {
-                Text("Your data automatically saves to iCloud when iCloud Drive is enabled in iOS Settings → [Your Name] → iCloud")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Automatic iCloud Backup")
+                    Text("Your data automatically saves to iCloud when iCloud Drive is enabled")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
             }
             
             Section {
@@ -49,9 +53,13 @@ struct BackupView: View {
                     Label("Import Backup File", systemImage: "square.and.arrow.down")
                 }
             } header: {
-                Text("Manual Backup")
-            } footer: {
-                Text("Save or restore a backup file manually. Useful for non-iCloud users or extra safety.")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Manual Backup")
+                    Text("Save or restore a backup file manually for extra safety")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
             }
         }
         .navigationTitle("Backup")

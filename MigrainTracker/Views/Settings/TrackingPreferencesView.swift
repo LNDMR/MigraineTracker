@@ -16,7 +16,7 @@ struct TrackingPreferencesView: View {
         Form {
             // MARK: - Symptoms
             Section {
-                NavigationLink(destination: SymptomPickerView()) {
+                NavigationLink(destination: SymptomPickerView(isSheet: false)) {
                     HStack {
                         VStack(alignment: .leading, spacing: Theme.Spacing.tiny) {
                             Text("Customize Symptoms")
@@ -29,49 +29,59 @@ struct TrackingPreferencesView: View {
                     }
                 }
             } header: {
-                Text("Symptoms")
-            } footer: {
-                Text("Select which symptoms appear in your tracking forms. Only your selected symptoms will be shown when logging attacks.")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Symptoms")
+                    Text("Select which symptoms appear in your tracking forms")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
             }
             
             // MARK: - Medications
             Section {
-                if store.usedMedications.isEmpty {
-                    Text("No medications used yet")
-                        .foregroundColor(Theme.Colors.secondaryText)
-                        .font(.subheadline)
-                } else {
-                    ForEach(store.usedMedications, id: \.self) { medication in
-                        HStack {
-                            Image(systemName: "pills")
-                                .foregroundColor(Theme.Colors.primaryAction)
-                            Text(medication)
+                NavigationLink(destination: MedicationPickerView(isSheet: false)) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.tiny) {
+                            Text("Customize Medications")
+                                .font(.body)
+                            Text("\(settingsManager.settings.selectedMedications.count) medications selected")
+                                .font(.caption)
+                                .foregroundColor(Theme.Colors.secondaryText)
                         }
+                        Spacer()
                     }
                 }
             } header: {
-                Text("Medications")
-            } footer: {
-                Text("Previously used medications will automatically appear as suggestions when tracking new attacks.")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Medications")
+                    Text("Select which medications appear in your tracking forms")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
             }
             
             // MARK: - Quick Log Behavior
             Section {
-                Toggle(isOn: $promptForDetails) {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.tiny) {
-                        Text("Prompt for Details")
-                        Text("Show option to add details after quick log")
-                            .font(.caption)
-                            .foregroundColor(Theme.Colors.secondaryText)
-                    }
+                HStack(alignment: .center) {
+                    Text("Prompt for Details")
+                        .font(.body)
+                    
+                    Spacer()
+                    
+                    Toggle("", isOn: $promptForDetails)
+                        .labelsHidden()
+                        .tint(Theme.Colors.primaryAction)
                 }
+                .frame(minHeight: 44)
             } header: {
-                Text("Quick Log Behavior")
-            } footer: {
-                if promptForDetails {
-                    Text("After quick logging, you'll be asked if you want to add details immediately or later.")
-                } else {
-                    Text("Quick log will save timestamp only, without prompting for details.")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Quick Log Behavior")
+                    Text("Choose whether to prompt for details after quick logging")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
                 }
             }
         }

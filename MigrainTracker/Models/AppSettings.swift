@@ -10,10 +10,13 @@ import Foundation
 /// App-wide preferences and configuration
 struct AppSettings: Codable {
     var name: String = ""
-    var selectedSymptoms: [String] = []
+    var selectedSymptoms: [String] = []  // Empty by default
+    var customSymptoms: [String] = []
+    var selectedMedications: [String] = []
+    var customMedications: [String] = []
     
-    /// Master list of all possible migraine symptoms
-    static let allSymptoms = [
+    /// Master list of default migraine symptoms
+    static let defaultSymptoms = [
         "Aura",
         "Nausea",
         "Vomiting",
@@ -55,14 +58,51 @@ struct AppSettings: Codable {
         "Difficulty Concentrating"
     ].sorted()
     
-    /// Default symptoms for new users (common ones)
-    static let defaultSymptoms = [
-        "Aura",
-        "Nausea",
-        "Light Sensitivity",
-        "Sound Sensitivity",
-        "Dizziness",
-        "Blurred Vision",
-        "Neck Pain"
-    ]
+    /// Master list of common migraine medications
+    static let defaultMedications = [
+        "Ibuprofen",
+        "Paracetamol",
+        "Aspirin",
+        "Sumatriptan",
+        "Rizatriptan",
+        "Zolmitriptan",
+        "Eletriptan",
+        "Naratriptan",
+        "Almotriptan",
+        "Frovatriptan",
+        "Ergotamine",
+        "Dihydroergotamine",
+        "Acetaminophen with Caffeine",
+        "Excedrin Migraine",
+        "Naproxen",
+        "Diclofenac",
+        "Indomethacin",
+        "Ketorolac",
+        "Metoclopramide",
+        "Prochlorperazine",
+        "Promethazine",
+        "Ondansetron",
+        "Topiramate",
+        "Propranolol",
+        "Amitriptyline",
+        "Valproate",
+        "Botox (OnabotulinumtoxinA)",
+        "Ubrelvy (Ubrogepant)",
+        "Nurtec (Rimegepant)",
+        "Aimovig (Erenumab)",
+        "Emgality (Galcanezumab)",
+        "Ajovy (Fremanezumab)"
+    ].sorted()
+    
+    /// All available symptoms (default + custom)
+    func allAvailableSymptoms() -> [String] {
+        let combined = Set(Self.defaultSymptoms).union(Set(customSymptoms))
+        return Array(combined).sorted()
+    }
+    
+    /// All available medications (default + custom)
+    func allAvailableMedications() -> [String] {
+        let combined = Set(Self.defaultMedications).union(Set(customMedications))
+        return Array(combined).sorted()
+    }
 }

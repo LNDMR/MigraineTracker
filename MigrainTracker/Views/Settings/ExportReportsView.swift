@@ -22,9 +22,13 @@ struct ExportReportsView: View {
                         settingsManager.save()
                     }
             } header: {
-                Text("Name for Reports")
-            } footer: {
-                Text("Appears in the header of exported PDF reports")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Name for Reports")
+                    Text("Appears in the header of exported PDF reports")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
             }
             
             Section {
@@ -40,9 +44,13 @@ struct ExportReportsView: View {
                     Label("Export to CSV", systemImage: "tablecells")
                 }
             } header: {
-                Text("Export Data")
-            } footer: {
-                Text("Export your migraine data for doctor appointments or personal analysis")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Export Data")
+                    Text("Export your migraine data for doctor appointments or personal analysis")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
             }
             
             Section {
@@ -51,8 +59,14 @@ struct ExportReportsView: View {
                 }) {
                     Label("Clear All Data", systemImage: "trash")
                 }
-            } footer: {
-                Text("Permanently deletes all logged attacks. This cannot be undone.")
+            } header: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Delete All Data")
+                    Text("Permanently deletes all logged attacks. This cannot be undone.")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(.red)
+                }
             }
         }
         .navigationTitle("Export & Reports")

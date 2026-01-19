@@ -52,7 +52,7 @@ struct HistoryView: View {
             .navigationTitle("History")
             .navigationDestination(isPresented: $showEventDetail) {
                 if let event = selectedEvent {
-                    EventDetailView(event: event)
+                    EventDetailView(eventID: event.id)
                 }
             }
             .toolbar {

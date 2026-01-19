@@ -10,16 +10,81 @@ import SwiftUI
 struct EventDetailView: View {
     @EnvironmentObject var store: MigraineStore
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("promptForDetails") private var promptForDetails = true
     
-    let event: MigraineEvent
+    let eventID: UUID
     
     @State private var showEditFlow = false
     @State private var showDeleteAlert = false
     
+    // Computed property that always gets fresh data from store
+    private var event: MigraineEvent? {
+        store.event(withID: eventID)
+    }
+    
     var body: some View {
+        Group {
+            if let event = event {
+                eventContent(event)
+            } else {
+                // Event was deleted
+                ContentUnavailableView(
+                    "Event Not Found",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("This migraine event no longer exists")
+                )
+            }
+        }
+        .navigationTitle("Migraine Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if event != nil {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        if promptForDetails {
+                            Button {
+                                showEditFlow = true
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                        }
+                        
+                        Button(role: .destructive) {
+                            showDeleteAlert = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showEditFlow) {
+            NavigationStack {
+                AddAttackDetailsFlow(eventID: eventID, store: store)
+                    .environmentObject(store)
+                    .environmentObject(SettingsManager())
+            }
+        }
+        .alert("Delete Migraine Event?", isPresented: $showDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                if let event = event {
+                    store.deleteEvent(event)
+                    dismiss()
+                }
+            }
+        } message: {
+            Text("This action cannot be undone.")
+        }
+    }
+    
+    @ViewBuilder
+    private func eventContent(_ event: MigraineEvent) -> some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.large) {
-                // Header Card
+                // Header Card - always shown
                 VStack(spacing: Theme.Spacing.small) {
                     Text(event.loggedAt, style: .date)
                         .font(.title2)
@@ -34,51 +99,16 @@ struct EventDetailView: View {
                 .background(Theme.Colors.secondaryBackground)
                 .cornerRadius(Theme.CornerRadius.medium)
                 
-                // Show prompt if no details, otherwise show details
-                if !event.hasDetails {
-                    noDetailsPrompt
-                } else {
-                    detailsSections
+                // Show details only if promptForDetails is ON
+                if promptForDetails {
+                    if !event.hasDetails {
+                        noDetailsPrompt
+                    } else {
+                        detailsSections(for: event)
+                    }
                 }
             }
             .padding(Theme.Spacing.regular)
-        }
-        .navigationTitle("Migraine Details")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button {
-                        showEditFlow = true
-                    } label: {
-                        Label("Edit", systemImage: "pencil")
-                    }
-                    
-                    Button(role: .destructive) {
-                        showDeleteAlert = true
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-            }
-        }
-        .sheet(isPresented: $showEditFlow) {
-            NavigationStack {
-                AddAttackDetailsFlow(eventID: event.id, store: store)
-                    .environmentObject(store)
-                    .environmentObject(SettingsManager())
-            }
-        }
-        .alert("Delete Migraine Event?", isPresented: $showDeleteAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                store.deleteEvent(event)
-                dismiss()
-            }
-        } message: {
-            Text("This action cannot be undone.")
         }
     }
     
@@ -112,7 +142,7 @@ struct EventDetailView: View {
     // MARK: - Details Sections
     
     @ViewBuilder
-    private var detailsSections: some View {
+    private func detailsSections(for event: MigraineEvent) -> some View {
         // Pain Level
         if let painLevel = event.painLevel {
             DetailSection(title: "Pain Level", icon: "bolt.fill") {

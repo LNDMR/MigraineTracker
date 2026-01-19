@@ -22,16 +22,29 @@ final class SettingsManager: ObservableObject {
         if let loadedSettings = Self.load(from: fileURL) {
             self.settings = loadedSettings
         } else {
-            // First launch - use defaults
-            self.settings = AppSettings(selectedSymptoms: AppSettings.defaultSymptoms)
+            // First launch - empty selection
+            self.settings = AppSettings()
         }
     }
     
-    /// Get symptoms to display (user's selection, or defaults if none)
+    /// Get symptoms to display (user's selection only)
     var symptomsToDisplay: [String] {
-        settings.selectedSymptoms.isEmpty
-            ? AppSettings.defaultSymptoms
-            : settings.selectedSymptoms
+        settings.selectedSymptoms
+    }
+    
+    /// Get medications to display (user's selection only)
+    var medicationsToDisplay: [String] {
+        settings.selectedMedications
+    }
+    
+    /// Check if user has set up symptoms
+    var hasConfiguredSymptoms: Bool {
+        !settings.selectedSymptoms.isEmpty
+    }
+    
+    /// Check if user has set up medications
+    var hasConfiguredMedications: Bool {
+        !settings.selectedMedications.isEmpty
     }
     
     /// Save settings to disk

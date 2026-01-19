@@ -9,6 +9,8 @@ import SwiftUI
 
 struct QuickLogView: View {
     @EnvironmentObject var store: MigraineStore
+    @AppStorage("promptForDetails") private var promptForDetails = true
+    
     @State private var showConfirmation = false
     @State private var showDetailsFlow = false
     @State private var lastLoggedEventID: UUID?
@@ -19,19 +21,25 @@ struct QuickLogView: View {
             VStack {
                 Spacer()
                 
-                if let pending = pendingEvent {
-                    PendingEventCard(
-                        event: pending,
-                        onDelete: {
-                            store.deleteEvent(pending)
-                            pendingEvent = nil
-                        },
-                        onAddDetails: {
-                            lastLoggedEventID = pending.id
-                            showDetailsFlow = true
-                        }
-                    )
+                if promptForDetails {
+                    // Full mode - show pending card or button
+                    if let pending = pendingEvent {
+                        PendingEventCard(
+                            event: pending,
+                            onDelete: {
+                                store.deleteEvent(pending)
+                                pendingEvent = nil
+                            },
+                            onAddDetails: {
+                                lastLoggedEventID = pending.id
+                                showDetailsFlow = true
+                            }
+                        )
+                    } else {
+                        QuickLogButton(onTap: handleQuickLog)
+                    }
                 } else {
+                    // Minimal mode - just button, no pending card
                     QuickLogButton(onTap: handleQuickLog)
                 }
                 
@@ -40,7 +48,19 @@ struct QuickLogView: View {
             .navigationTitle("Quick Log")
             .overlay {
                 if showConfirmation {
-                    ConfirmationOverlay()
+                    if promptForDetails {
+                        // Full confirmation with buttons
+                        ConfirmationOverlay(
+                            onDelete: handleDelete,
+                            onAddDetails: {
+                                showConfirmation = false
+                                showDetailsFlow = true
+                            }
+                        )
+                    } else {
+                        // Minimal confirmation - just checkmark
+                        MinimalConfirmation()
+                    }
                 }
             }
             .animation(.spring(), value: showConfirmation)
@@ -48,10 +68,12 @@ struct QuickLogView: View {
                 detailsFlowView
             }
             .onAppear {
-                checkForPendingEvent()
+                if promptForDetails {
+                    checkForPendingEvent()
+                }
             }
             .onChange(of: showDetailsFlow) { _, isShowing in
-                if !isShowing {
+                if !isShowing && promptForDetails {
                     checkForPendingEvent()
                 }
             }
@@ -72,11 +94,14 @@ struct QuickLogView: View {
         let newEvent = MigraineEvent(loggedAt: Date())
         lastLoggedEventID = newEvent.id
         store.updateEvent(newEvent)
-        pendingEvent = newEvent
+        
+        if promptForDetails {
+            pendingEvent = newEvent
+        }
         
         showConfirmation = true
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + (promptForDetails ? 2.5 : 1.5)) {
             showConfirmation = false
         }
     }
@@ -86,6 +111,7 @@ struct QuickLogView: View {
             store.deleteEvent(pending)
             pendingEvent = nil
         }
+        showConfirmation = false
     }
     
     private func checkForPendingEvent() {
@@ -171,6 +197,44 @@ private struct PendingEventCard: View {
 }
 
 private struct ConfirmationOverlay: View {
+    let onDelete: () -> Void
+    let onAddDetails: () -> Void
+    
+    var body: some View {
+        VStack(spacing: Theme.Spacing.extraLarge) {
+            // Big checkmark
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 70))
+                .foregroundColor(Theme.Colors.success)
+            
+            // Two simple buttons
+            VStack(spacing: Theme.Spacing.medium) {
+                Button(action: onAddDetails) {
+                    Text("Add Details")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Theme.Spacing.large)
+                        .background(Theme.Colors.primaryAction)
+                        .foregroundColor(Theme.Colors.inverseText)
+                        .cornerRadius(Theme.CornerRadius.medium)
+                }
+                
+                Button(action: onDelete) {
+                    Text("Delete")
+                        .font(.subheadline)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
+            }
+        }
+        .padding(Theme.Spacing.extraLarge)
+        .frame(maxWidth: 300)
+        .background(Theme.Colors.cardBackground)
+        .cornerRadius(Theme.CornerRadius.extraLarge)
+        .shadow(color: Theme.Shadow.color, radius: Theme.Shadow.Radius.large)
+    }
+}
+
+private struct MinimalConfirmation: View {
     var body: some View {
         VStack(spacing: Theme.Spacing.medium) {
             Image(systemName: "checkmark.circle.fill")

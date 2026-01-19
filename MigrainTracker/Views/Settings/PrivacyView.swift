@@ -22,8 +22,14 @@ struct PrivacyView: View {
                             .foregroundColor(Theme.Colors.secondaryText)
                     }
                 }
-            } footer: {
-                Text("When enabled, app requires biometric authentication to open")
+            } header: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Biometric Authentication")
+                    Text("Requires authentication to open the app")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
             }
             
             Section {
@@ -35,8 +41,14 @@ struct PrivacyView: View {
                             .foregroundColor(Theme.Colors.secondaryText)
                     }
                 }
-            } footer: {
-                Text("Prevents others from seeing your migraine data when scrolling through open apps")
+            } header: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("App Switcher Privacy")
+                    Text("Prevents others from seeing your data when scrolling through open apps")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
             }
         }
         .navigationTitle("Privacy")

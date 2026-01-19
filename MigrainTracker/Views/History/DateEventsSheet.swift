@@ -10,6 +10,7 @@ import SwiftUI
 struct DateEventsSheet: View {
     @EnvironmentObject var store: MigraineStore
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("promptForDetails") private var promptForDetails = true
     
     let date: Date
     
@@ -24,9 +25,15 @@ struct DateEventsSheet: View {
         NavigationStack {
             List {
                 ForEach(events) { event in
-                    NavigationLink {
-                        EventDetailView(event: event)
-                    } label: {
+                    if promptForDetails {
+                        // Full mode - tappable to navigate
+                        NavigationLink {
+                            EventDetailView(eventID: event.id)
+                        } label: {
+                            EventRow(event: event)
+                        }
+                    } else {
+                        // Minimal mode - not tappable
                         EventRow(event: event)
                     }
                 }

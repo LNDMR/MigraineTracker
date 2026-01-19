@@ -24,9 +24,13 @@ struct SettingsView: View {
                         Label("Notifications", systemImage: "bell")
                     }
                 } header: {
-                    Text("TRACKING")
-                } footer: {
-                    Text("Control how you log and track your migraines")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("TRACKING")
+                        Text("Control how you log and track your migraines")
+                            .font(.caption)
+                            .textCase(.none)
+                            .foregroundColor(Theme.Colors.secondaryText)
+                    }
                 }
                 
                 // MARK: - DATA
@@ -39,9 +43,13 @@ struct SettingsView: View {
                         Label("Backup", systemImage: "arrow.clockwise.icloud")
                     }
                 } header: {
-                    Text("DATA")
-                } footer: {
-                    Text("Manage your migraine data through export, backup, and deletion")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("DATA")
+                        Text("Manage your migraine data through export, backup, and deletion")
+                            .font(.caption)
+                            .textCase(.none)
+                            .foregroundColor(Theme.Colors.secondaryText)
+                    }
                 }
                 
                 // MARK: - PREFERENCES
@@ -58,9 +66,13 @@ struct SettingsView: View {
                         Label("Privacy", systemImage: "lock.shield")
                     }
                 } header: {
-                    Text("PREFERENCES")
-                } footer: {
-                    Text("Configure app behavior, appearance, and security")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("PREFERENCES")
+                        Text("Configure app behavior, appearance, and security")
+                            .font(.caption)
+                            .textCase(.none)
+                            .foregroundColor(Theme.Colors.secondaryText)
+                    }
                 }
                 
                 // MARK: - INFO
@@ -83,9 +95,13 @@ struct SettingsView: View {
                         Label("About", systemImage: "info.circle")
                     }
                 } header: {
-                    Text("INFO")
-                } footer: {
-                    Text("View statistics, get help, and learn more about the app")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("INFO")
+                        Text("View statistics, get help, and learn more about the app")
+                            .font(.caption)
+                            .textCase(.none)
+                            .foregroundColor(Theme.Colors.secondaryText)
+                    }
                 }
                 
 #if DEBUG
@@ -99,6 +115,21 @@ Section {
         store.clearSampleEvents()
     }
     .foregroundColor(Theme.Colors.error)
+    
+    Button("Reset Symptoms Setup") {
+        settingsManager.settings.selectedSymptoms = []
+        settingsManager.settings.customSymptoms = []
+        settingsManager.save()
+    }
+    .foregroundColor(Theme.Colors.error)
+    
+    Button("Reset Medications Setup") {
+        settingsManager.settings.selectedMedications = []
+        settingsManager.settings.customMedications = []
+        settingsManager.save()
+    }
+    .foregroundColor(Theme.Colors.error)
+    
 } header: {
     Text("Development Tools")
 }

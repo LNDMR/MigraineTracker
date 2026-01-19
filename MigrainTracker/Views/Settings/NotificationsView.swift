@@ -21,15 +21,25 @@ struct NotificationsView: View {
                     }
                 }
             } header: {
-                Text("Complete Log Reminder")
-            } footer: {
-                Text("Reminds you to add details after a quick log when you're feeling better")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Complete Log Reminder")
+                    Text("Reminds you to add details when you're feeling better")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
             }
             
             Section {
                 Toggle("Daily Check-In (8pm)", isOn: $dailyCheckIn)
-            } footer: {
-                Text("Evening prompt asking if you had a migraine today")
+            } header: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Daily Check-In")
+                    Text("Evening prompt asking if you had a migraine today")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
             }
             
             Section {
@@ -38,8 +48,14 @@ struct NotificationsView: View {
                         Text(time.label).tag(time)
                     }
                 }
-            } footer: {
-                Text("Shows your weekly migraine count for pattern awareness")
+            } header: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Weekly Summary")
+                    Text("Shows your weekly migraine count for pattern awareness")
+                        .font(.caption)
+                        .textCase(.none)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
             }
         }
         .navigationTitle("Notifications")

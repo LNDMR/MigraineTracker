@@ -9,6 +9,7 @@ import SwiftUI
 
 struct GroupedListView: View {
     @EnvironmentObject var store: MigraineStore
+    @AppStorage("promptForDetails") private var promptForDetails = true
     @State private var expandedMonths: Set<String> = []
     
     private var groupedEvents: [(String, [MigraineEvent])] {
@@ -80,18 +81,31 @@ struct GroupedListView: View {
                             // Events - only show if expanded
                             if expandedMonths.contains(month) {
                                 ForEach(events) { event in
-                                    NavigationLink {
-                                        EventDetailView(event: event)
-                                    } label: {
-                                        EventRow(event: event)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .contextMenu {
-                                        Button(role: .destructive) {
-                                            store.deleteEvent(event)
+                                    if promptForDetails {
+                                        // Full mode - tappable to navigate
+                                        NavigationLink {
+                                            EventDetailView(eventID: event.id)
                                         } label: {
-                                            Label("Delete", systemImage: "trash")
+                                            EventRow(event: event)
                                         }
+                                        .buttonStyle(.plain)
+                                        .contextMenu {
+                                            Button(role: .destructive) {
+                                                store.deleteEvent(event)
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
+                                        }
+                                    } else {
+                                        // Minimal mode - not tappable, just display
+                                        EventRow(event: event)
+                                            .contextMenu {
+                                                Button(role: .destructive) {
+                                                    store.deleteEvent(event)
+                                                } label: {
+                                                    Label("Delete", systemImage: "trash")
+                                                }
+                                            }
                                     }
                                 }
                             }

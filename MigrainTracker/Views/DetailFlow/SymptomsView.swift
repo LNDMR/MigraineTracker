@@ -11,64 +11,97 @@ struct SymptomsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
     @Binding var symptoms: [String]
     @State private var selectedSymptoms: Set<String> = []
+    @State private var showSymptomPicker = false
     
     var body: some View {
-        VStack(spacing: Theme.Spacing.jumbo) {
-            Text("Which symptoms did you experience?")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .multilineTextAlignment(.center)
-                .padding(.top, Theme.Spacing.huge)
+        VStack(spacing: Theme.Spacing.large) {
+            VStack(spacing: Theme.Spacing.small) {
+                Text("Which symptoms did you experience?")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, Theme.Spacing.huge)
+                
+                if settingsManager.hasConfiguredSymptoms {
+                    // Subtle manage button at bottom
+                    Button {
+                        showSymptomPicker = true
+                    } label: {
+                        HStack(spacing: Theme.Spacing.small) {
+                            Image(systemName: "gear")
+                                .font(.caption)
+                            Text("Manage Symptoms")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(Theme.Colors.secondaryText)
+                        .padding(.vertical, Theme.Spacing.small)
+                    }
+                    .padding(.bottom, Theme.Spacing.medium)
+                }
+            }
             
-            if settingsManager.symptomsToDisplay.isEmpty {
-                // No symptoms configured
+            if !settingsManager.hasConfiguredSymptoms {
+                // No symptoms configured - show setup prompt
                 Spacer()
                 
-                VStack(spacing: Theme.Spacing.regular) {
-                    Image(systemName: "cross.case")
+                VStack(spacing: Theme.Spacing.large) {
+                    Image(systemName: "list.bullet.circle")
                         .font(.system(size: 60))
-                        .foregroundColor(Theme.Colors.secondaryText)
+                        .foregroundColor(Theme.Colors.primaryAction.opacity(0.5))
                     
-                    Text("No Symptoms Configured")
+                    Text("Customize your symptom list")
                         .font(.headline)
                     
-                    Text("Go to Settings to select your typical symptoms")
+                    Text("Select the symptoms you typically experience to make logging faster")
                         .font(.subheadline)
                         .foregroundColor(Theme.Colors.secondaryText)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+                        .padding(.horizontal, Theme.Spacing.large)
                     
-                    NavigationLink(destination: SymptomPickerView()) {
-                        Label("Go to Settings", systemImage: "gear")
-                            .padding(Theme.Spacing.regular)
+                    Button {
+                        showSymptomPicker = true
+                    } label: {
+                        Text("Set Up Symptoms")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, Theme.Spacing.regular)
                             .background(Theme.Colors.primaryAction)
                             .foregroundColor(Theme.Colors.inverseText)
                             .cornerRadius(Theme.CornerRadius.medium)
                     }
+                    .padding(.horizontal, Theme.Spacing.huge)
                 }
                 
                 Spacer()
             } else {
                 // Show symptoms list
-                ScrollView {
-                    VStack(spacing: Theme.Spacing.medium) {
-                        ForEach(settingsManager.symptomsToDisplay, id: \.self) { symptom in
-                            SymptomRow(
-                                symptom: symptom,
-                                isSelected: selectedSymptoms.contains(symptom)
-                            ) {
-                                if selectedSymptoms.contains(symptom) {
-                                    selectedSymptoms.remove(symptom)
-                                } else {
-                                    selectedSymptoms.insert(symptom)
+                VStack(spacing: 0) {
+                    ScrollView {
+                        VStack(spacing: Theme.Spacing.medium) {
+                            ForEach(settingsManager.symptomsToDisplay, id: \.self) { symptom in
+                                SymptomRow(
+                                    symptom: symptom,
+                                    isSelected: selectedSymptoms.contains(symptom)
+                                ) {
+                                    if selectedSymptoms.contains(symptom) {
+                                        selectedSymptoms.remove(symptom)
+                                    } else {
+                                        selectedSymptoms.insert(symptom)
+                                    }
+                                    symptoms = Array(selectedSymptoms)
                                 }
-                                symptoms = Array(selectedSymptoms)
                             }
                         }
+                        .padding(.horizontal, Theme.Spacing.extraLarge)
+                        .padding(.bottom, Theme.Spacing.medium)
                     }
-                    .padding(.horizontal, Theme.Spacing.extraLarge)
                 }
             }
+        }
+        .sheet(isPresented: $showSymptomPicker) {
+            SymptomPickerView(isSheet: true)
+                .environmentObject(settingsManager)
         }
         .onAppear {
             selectedSymptoms = Set(symptoms)
@@ -104,7 +137,7 @@ struct SymptomRow: View {
 
 #Preview {
     NavigationStack {
-        SymptomsView(symptoms: .constant(["Aura", "Nausea"]))
+        SymptomsView(symptoms: .constant(["Nausea"]))
             .environmentObject(SettingsManager())
     }
 }
