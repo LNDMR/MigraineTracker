@@ -34,89 +34,11 @@ struct EventDetailView: View {
                 .background(Theme.Colors.secondaryBackground)
                 .cornerRadius(Theme.CornerRadius.medium)
                 
-                // Pain Level
-                if let painLevel = event.painLevel {
-                    DetailSection(title: "Pain Level", icon: "bolt.fill") {
-                        HStack {
-                            Text(painLevel.label)
-                                .font(.headline)
-                            Spacer()
-                            ForEach(1...3, id: \.self) { level in
-                                Circle()
-                                    .fill(level <= painLevel.rawValue ? severityColor(for: painLevel) : Theme.Colors.secondaryBackground)
-                                    .frame(width: Theme.Size.indicator, height: Theme.Size.indicator)
-                            }
-                        }
-                        
-                        Text(painLevel.description)
-                            .font(.subheadline)
-                            .foregroundColor(Theme.Colors.secondaryText)
-                    }
-                }
-                
-                // Onset Time
-                if let onset = event.symptomsOnsetTime {
-                    DetailSection(title: "Symptoms Began", icon: onset.icon) {
-                        HStack {
-                            Text(onset.label)
-                                .font(.headline)
-                            Spacer()
-                            Text(onset.timeRange)
-                                .font(.subheadline)
-                                .foregroundColor(Theme.Colors.secondaryText)
-                        }
-                    }
-                }
-                
-                // Duration
-                if let duration = event.duration {
-                    DetailSection(title: "Duration", icon: "clock.fill") {
-                        Text(duration.label)
-                            .font(.headline)
-                    }
-                }
-                
-                // Symptoms
-                if let symptoms = event.symptoms, !symptoms.isEmpty {
-                    DetailSection(title: "Symptoms", icon: "list.bullet") {
-                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                            ForEach(symptoms, id: \.self) { symptom in
-                                HStack {
-                                    Image(systemName: "circle.fill")
-                                        .font(.system(size: 6))
-                                        .foregroundColor(Theme.Colors.primaryAction)
-                                    Text(symptom)
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // Medication
-                if let medication = event.medication {
-                    DetailSection(title: "Medication", icon: "cross.case.fill") {
-                        HStack {
-                            Text(medication)
-                                .font(.headline)
-                            
-                            Spacer()
-                            
-                            if let helped = event.medicationHelped {
-                                Label(helped ? "Helped" : "Didn't Help", systemImage: helped ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                    .font(.subheadline)
-                                    .foregroundColor(helped ? Theme.Colors.success : Theme.Colors.error)
-                            }
-                        }
-                    }
-                }
-                
-                // Notes
-                if let notes = event.notes, !notes.isEmpty {
-                    DetailSection(title: "Notes", icon: "note.text") {
-                        Text(notes)
-                            .font(.body)
-                            .foregroundColor(Theme.Colors.secondaryText)
-                    }
+                // Show prompt if no details, otherwise show details
+                if !event.hasDetails {
+                    noDetailsPrompt
+                } else {
+                    detailsSections
                 }
             }
             .padding(Theme.Spacing.regular)
@@ -157,6 +79,123 @@ struct EventDetailView: View {
             }
         } message: {
             Text("This action cannot be undone.")
+        }
+    }
+    
+    // MARK: - No Details Prompt
+    
+    private var noDetailsPrompt: some View {
+        VStack(spacing: Theme.Spacing.large) {
+            Text("No details logged yet")
+                .font(.title3)
+                .fontWeight(.semibold)
+            
+            Button {
+                showEditFlow = true
+            } label: {
+                Text("Add Details")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Theme.Spacing.regular)
+                    .background(Theme.Colors.primaryAction)
+                    .foregroundColor(Theme.Colors.inverseText)
+                    .cornerRadius(Theme.CornerRadius.medium)
+            }
+            .padding(.horizontal, Theme.Spacing.huge)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Theme.Spacing.jumbo)
+        .background(Theme.Colors.secondaryBackground)
+        .cornerRadius(Theme.CornerRadius.large)
+    }
+    
+    // MARK: - Details Sections
+    
+    @ViewBuilder
+    private var detailsSections: some View {
+        // Pain Level
+        if let painLevel = event.painLevel {
+            DetailSection(title: "Pain Level", icon: "bolt.fill") {
+                HStack {
+                    Text(painLevel.label)
+                        .font(.headline)
+                    Spacer()
+                    ForEach(1...3, id: \.self) { level in
+                        Circle()
+                            .fill(level <= painLevel.rawValue ? severityColor(for: painLevel) : Theme.Colors.secondaryBackground)
+                            .frame(width: Theme.Size.indicator, height: Theme.Size.indicator)
+                    }
+                }
+                
+                Text(painLevel.description)
+                    .font(.subheadline)
+                    .foregroundColor(Theme.Colors.secondaryText)
+            }
+        }
+        
+        // Onset Time
+        if let onset = event.symptomsOnsetTime {
+            DetailSection(title: "Symptoms Began", icon: onset.icon) {
+                HStack {
+                    Text(onset.label)
+                        .font(.headline)
+                    Spacer()
+                    Text(onset.timeRange)
+                        .font(.subheadline)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
+            }
+        }
+        
+        // Duration
+        if let duration = event.duration {
+            DetailSection(title: "Duration", icon: "clock.fill") {
+                Text(duration.label)
+                    .font(.headline)
+            }
+        }
+        
+        // Symptoms
+        if let symptoms = event.symptoms, !symptoms.isEmpty {
+            DetailSection(title: "Symptoms", icon: "list.bullet") {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    ForEach(symptoms, id: \.self) { symptom in
+                        HStack {
+                            Image(systemName: "circle.fill")
+                                .font(.system(size: 6))
+                                .foregroundColor(Theme.Colors.primaryAction)
+                            Text(symptom)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Medication
+        if let medication = event.medication {
+            DetailSection(title: "Medication", icon: "cross.case.fill") {
+                HStack {
+                    Text(medication)
+                        .font(.headline)
+                    
+                    Spacer()
+                    
+                    if let helped = event.medicationHelped {
+                        Label(helped ? "Helped" : "Didn't Help", systemImage: helped ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .font(.subheadline)
+                            .foregroundColor(helped ? Theme.Colors.success : Theme.Colors.error)
+                    }
+                }
+            }
+        }
+        
+        // Notes
+        if let notes = event.notes, !notes.isEmpty {
+            DetailSection(title: "Notes", icon: "note.text") {
+                Text(notes)
+                    .font(.body)
+                    .foregroundColor(Theme.Colors.secondaryText)
+            }
         }
     }
     

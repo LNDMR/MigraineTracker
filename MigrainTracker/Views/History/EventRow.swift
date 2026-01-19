@@ -11,52 +11,54 @@ struct EventRow: View {
     let event: MigraineEvent
     
     var body: some View {
-        HStack(spacing: Theme.Spacing.medium) {
-            // Severity indicator
-            Circle()
-                .fill(severityColor)
-                .frame(width: Theme.Size.indicator, height: Theme.Size.indicator)
-            
-            VStack(alignment: .leading, spacing: Theme.Spacing.tiny) {
-                HStack {
-                    Text(event.loggedAt, style: .date)
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            // Header: Date and time of day
+            HStack(spacing: Theme.Spacing.small) {
+                Text(event.loggedAt.formatted(date: .abbreviated, time: .omitted))
+                    .font(.headline)
+                
+                if let onset = event.symptomsOnsetTime {
+                    Text(onset.label.lowercased())
                         .font(.headline)
-                    
-                    if let onset = event.symptomsOnsetTime {
-                        Image(systemName: onset.icon)
-                            .font(.caption)
-                            .foregroundColor(Theme.Colors.secondaryText)
-                        Text(onset.label)
-                            .font(.caption)
-                            .foregroundColor(Theme.Colors.secondaryText)
-                    }
+                        .foregroundColor(Theme.Colors.secondaryText)
                 }
                 
-                HStack {
-                    Text(event.loggedAt, style: .time)
-                        .font(.subheadline)
-                        .foregroundColor(Theme.Colors.secondaryText)
-                    
-                    if let duration = event.duration {
-                        Text("•")
-                            .foregroundColor(Theme.Colors.secondaryText)
-                        Text(duration.label)
-                            .font(.subheadline)
-                            .foregroundColor(Theme.Colors.secondaryText)
-                    }
-                }
+                Spacer()
             }
             
-            Spacer()
+            // Severity badge (only if logged)
+            if let severity = event.painLevel {
+                HStack(spacing: Theme.Spacing.small) {
+                    Circle()
+                        .fill(severity.color)
+                        .frame(width: 12, height: 12)
+                    
+                    Text(severity.label)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+                .padding(.horizontal, Theme.Spacing.medium)
+                .padding(.vertical, Theme.Spacing.small)
+                .background(severity.color.opacity(0.15))
+                .cornerRadius(Theme.CornerRadius.medium)
+            }
             
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundColor(Theme.Colors.secondaryText)
+            // Symptoms preview (only if logged)
+            if let symptoms = event.symptoms, !symptoms.isEmpty {
+                HStack(spacing: Theme.Spacing.small) {
+                    Image(systemName: "list.bullet.circle")
+                        .font(.subheadline)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                    Text(symptoms.first ?? "")
+                        .font(.subheadline)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                        .lineLimit(1)
+                }
+            }
         }
-        .padding(.vertical, Theme.Spacing.tiny)
-    }
-    
-    private var severityColor: Color {
-        event.painLevel?.color ?? Theme.Colors.Raw.lavenderGrey.opacity(0.3)
+        .padding(Theme.Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Colors.secondaryBackground)
+        .cornerRadius(Theme.CornerRadius.large)
     }
 }

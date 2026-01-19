@@ -44,10 +44,15 @@ final class MigraineStore: ObservableObject {
         events.first { $0.id == id }
     }
     
-    /// Update an existing event
+    /// Update an existing event or insert a new one
     func updateEvent(_ updatedEvent: MigraineEvent) {
-        guard let index = events.firstIndex(where: { $0.id == updatedEvent.id }) else { return }
-        events[index] = updatedEvent
+        if let index = events.firstIndex(where: { $0.id == updatedEvent.id }) {
+            // Update existing event
+            events[index] = updatedEvent
+        } else {
+            // Insert new event
+            events.append(updatedEvent)
+        }
         sortEvents()
         saveEvents()
     }
@@ -77,6 +82,16 @@ final class MigraineStore: ObservableObject {
         saveEvents()
     }
     
+    /// Returns the most recent event from today that has no details added
+    func todaysIncompleteEvent() -> MigraineEvent? {
+        let calendar = Calendar.current
+        let today = Date()
+        
+        return events.first { event in
+            calendar.isDateInToday(event.loggedAt) && !event.hasDetails
+        }
+    }
+    
     // MARK: - Analytics
     
     /// Count of events in the current month
@@ -87,6 +102,169 @@ final class MigraineStore: ObservableObject {
             calendar.isDate(event.loggedAt, equalTo: now, toGranularity: .month)
         }.count
     }
+
+    // MARK: - Testing & Development
+
+    #if DEBUG
+    /// Populates the store with realistic sample migraine events for testing
+    func addSampleEvents() {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        var sampleEvents: [MigraineEvent] = []
+        
+        // Event 1: Today - incomplete (just quick logged)
+        let today = now
+        sampleEvents.append(MigraineEvent(loggedAt: today))
+        
+        // Event 2: Yesterday - complete with all details
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now) {
+            var event = MigraineEvent(loggedAt: yesterday)
+            event.symptomsOnsetTime = .morning
+            event.duration = .medium
+            event.painLevel = .severe
+            event.symptoms = ["Sensitivity to light", "Nausea", "Throbbing pain"]
+            event.medication = "Ibuprofen 400mg"
+            event.medicationHelped = true
+            event.notes = "Started after waking up. Had to stay in dark room most of the day."
+            sampleEvents.append(event)
+        }
+        
+        // Event 3: 3 days ago - moderate
+        if let threeDaysAgo = calendar.date(byAdding: .day, value: -3, to: now) {
+            var event = MigraineEvent(loggedAt: threeDaysAgo)
+            event.symptomsOnsetTime = .afternoon
+            event.duration = .short
+            event.painLevel = .moderate
+            event.symptoms = ["Throbbing pain", "Sensitivity to light"]
+            event.medication = "Paracetamol"
+            event.medicationHelped = false
+            sampleEvents.append(event)
+        }
+        
+        // Event 4: 5 days ago - mild
+        if let fiveDaysAgo = calendar.date(byAdding: .day, value: -5, to: now) {
+            var event = MigraineEvent(loggedAt: fiveDaysAgo)
+            event.symptomsOnsetTime = .evening
+            event.duration = .short
+            event.painLevel = .mild
+            event.symptoms = ["Mild headache"]
+            sampleEvents.append(event)
+        }
+        
+        // Event 5: 1 week ago - severe with lots of symptoms
+        if let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: now) {
+            var event = MigraineEvent(loggedAt: oneWeekAgo)
+            event.symptomsOnsetTime = .night
+            event.duration = .veryLong
+            event.painLevel = .severe
+            event.symptoms = ["Throbbing pain", "Nausea", "Sensitivity to light", "Sensitivity to sound", "Dizziness"]
+            event.medication = "Sumatriptan 50mg"
+            event.medicationHelped = true
+            event.notes = "Worst migraine in months. Had to call in sick."
+            sampleEvents.append(event)
+        }
+        
+        // Event 6: 10 days ago - incomplete
+        if let tenDaysAgo = calendar.date(byAdding: .day, value: -10, to: now) {
+            var event = MigraineEvent(loggedAt: tenDaysAgo)
+            event.painLevel = .moderate
+            sampleEvents.append(event)
+        }
+        
+        // Event 7: 2 weeks ago
+        if let twoWeeksAgo = calendar.date(byAdding: .day, value: -14, to: now) {
+            var event = MigraineEvent(loggedAt: twoWeeksAgo)
+            event.symptomsOnsetTime = .morning
+            event.duration = .long
+            event.painLevel = .severe
+            event.symptoms = ["Throbbing pain", "Visual disturbances", "Nausea"]
+            event.medication = "Ibuprofen 600mg"
+            event.medicationHelped = true
+            sampleEvents.append(event)
+        }
+        
+        // Event 8: 3 weeks ago
+        if let threeWeeksAgo = calendar.date(byAdding: .day, value: -21, to: now) {
+            var event = MigraineEvent(loggedAt: threeWeeksAgo)
+            event.symptomsOnsetTime = .afternoon
+            event.duration = .medium
+            event.painLevel = .moderate
+            event.symptoms = ["Throbbing pain", "Fatigue"]
+            sampleEvents.append(event)
+        }
+        
+        // Event 9: Last month - severe
+        if let lastMonth = calendar.date(byAdding: .month, value: -1, to: now) {
+            var event = MigraineEvent(loggedAt: lastMonth)
+            event.symptomsOnsetTime = .evening
+            event.duration = .veryLong
+            event.painLevel = .severe
+            event.symptoms = ["Throbbing pain", "Nausea", "Sensitivity to light", "Vomiting"]
+            event.medication = "Sumatriptan 100mg"
+            event.medicationHelped = true
+            event.notes = "Triggered by stress at work. Lasted through the night."
+            sampleEvents.append(event)
+        }
+        
+        // Event 10: 6 weeks ago
+        if let sixWeeksAgo = calendar.date(byAdding: .day, value: -42, to: now) {
+            var event = MigraineEvent(loggedAt: sixWeeksAgo)
+            event.symptomsOnsetTime = .morning
+            event.duration = .short
+            event.painLevel = .mild
+            event.symptoms = ["Mild headache", "Fatigue"]
+            event.medication = "Paracetamol"
+            event.medicationHelped = true
+            sampleEvents.append(event)
+        }
+        
+        // Event 11: 2 months ago - multiple events same day
+        if let twoMonthsAgo = calendar.date(byAdding: .month, value: -2, to: now) {
+            var event1 = MigraineEvent(loggedAt: twoMonthsAgo)
+            event1.symptomsOnsetTime = .morning
+            event1.duration = .medium
+            event1.painLevel = .moderate
+            event1.symptoms = ["Throbbing pain", "Sensitivity to light"]
+            sampleEvents.append(event1)
+            
+            // Second event same day, different time
+            if let sameDay = calendar.date(byAdding: .hour, value: 6, to: twoMonthsAgo) {
+                var event2 = MigraineEvent(loggedAt: sameDay)
+                event2.symptomsOnsetTime = .afternoon
+                event2.duration = .short
+                event2.painLevel = .mild
+                event2.symptoms = ["Mild headache"]
+                sampleEvents.append(event2)
+            }
+        }
+        
+        // Event 12: 2.5 months ago
+        if let oldEvent = calendar.date(byAdding: .day, value: -75, to: now) {
+            var event = MigraineEvent(loggedAt: oldEvent)
+            event.symptomsOnsetTime = .night
+            event.duration = .long
+            event.painLevel = .severe
+            event.symptoms = ["Throbbing pain", "Nausea", "Sensitivity to light"]
+            event.medication = "Ibuprofen 400mg"
+            event.medicationHelped = false
+            sampleEvents.append(event)
+        }
+        
+        // Add all sample events to store
+        for event in sampleEvents {
+            updateEvent(event)
+        }
+        
+        print("✅ Added \(sampleEvents.count) sample migraine events")
+    }
+
+    /// Clear all events (useful for testing)
+    func clearSampleEvents() {
+        clearAllEvents()
+        print("✅ Cleared all events")
+    }
+    #endif
     
     // MARK: - Medication History
     

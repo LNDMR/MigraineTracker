@@ -87,6 +87,23 @@ struct SettingsView: View {
                 } footer: {
                     Text("View statistics, get help, and learn more about the app")
                 }
+                
+#if DEBUG
+Section {
+    Button("Add Sample Events") {
+        store.addSampleEvents()
+    }
+    .foregroundColor(Theme.Colors.primaryAction)
+    
+    Button("Clear All Events") {
+        store.clearSampleEvents()
+    }
+    .foregroundColor(Theme.Colors.error)
+} header: {
+    Text("Development Tools")
+}
+#endif
+                
             }
             .navigationTitle("Settings")
         }

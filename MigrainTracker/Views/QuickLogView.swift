@@ -12,84 +12,180 @@ struct QuickLogView: View {
     @State private var showConfirmation = false
     @State private var showDetailsFlow = false
     @State private var lastLoggedEventID: UUID?
+    @State private var pendingEvent: MigraineEvent?
     
     var body: some View {
         NavigationStack {
             VStack {
                 Spacer()
                 
-                // Big Quick Log Button
-                Button(action: {
-                    let newEvent = MigraineEvent(loggedAt: Date())
-                    lastLoggedEventID = newEvent.id
-                    store.updateEvent(newEvent)
-                    
-                    showConfirmation = true
-                    
-                    // Auto-hide after 1.5 seconds
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        showConfirmation = false
-                    }
-                }) {
-                    VStack(spacing: Theme.Spacing.regular) {
-                        Image(systemName: "bolt.fill")
-                            .font(.system(size: 60))
-                        Text("Migraine Attack")
-                            .font(.title)
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Theme.Spacing.jumbo)
-                    .background(Theme.Colors.primaryAction)
-                    .foregroundColor(Theme.Colors.inverseText)
-                    .cornerRadius(Theme.CornerRadius.extraLarge)
+                if let pending = pendingEvent {
+                    PendingEventCard(
+                        event: pending,
+                        onDelete: {
+                            store.deleteEvent(pending)
+                            pendingEvent = nil
+                        },
+                        onAddDetails: {
+                            lastLoggedEventID = pending.id
+                            showDetailsFlow = true
+                        }
+                    )
+                } else {
+                    QuickLogButton(onTap: handleQuickLog)
                 }
-                .padding(.horizontal, Theme.Spacing.huge)
                 
                 Spacer()
             }
             .navigationTitle("Quick Log")
-            .overlay(
-                Group {
-                    if showConfirmation {
-                        VStack(spacing: Theme.Spacing.regular) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 50))
-                                .foregroundColor(Theme.Colors.success)
-                            Text("Saved")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                            
-                            Button(action: {
-                                showConfirmation = false
-                                showDetailsFlow = true
-                            }) {
-                                Text("Add Details")
-                                    .fontWeight(.semibold)
-                                    .padding(.horizontal, Theme.Spacing.large)
-                                    .padding(.vertical, Theme.Spacing.medium)
-                                    .background(Theme.Colors.primaryAction)
-                                    .foregroundColor(Theme.Colors.inverseText)
-                                    .cornerRadius(Theme.CornerRadius.medium)
-                            }
-                        }
-                        .padding(Theme.Spacing.huge)
-                        .background(Theme.Colors.cardBackground.opacity(0.98))
-                        .cornerRadius(Theme.CornerRadius.extraLarge)
-                        .shadow(color: Theme.Shadow.color, radius: Theme.Shadow.Radius.large)
-                        .transition(.scale.combined(with: .opacity))
-                    }
+            .overlay {
+                if showConfirmation {
+                    ConfirmationOverlay()
                 }
-            )
+            }
             .animation(.spring(), value: showConfirmation)
             .fullScreenCover(isPresented: $showDetailsFlow) {
-                if let eventID = lastLoggedEventID {
-                    AddAttackDetailsFlow(eventID: eventID, store: store)
-                        .environmentObject(store)
-                        .environmentObject(SettingsManager())
+                detailsFlowView
+            }
+            .onAppear {
+                checkForPendingEvent()
+            }
+            .onChange(of: showDetailsFlow) { _, isShowing in
+                if !isShowing {
+                    checkForPendingEvent()
                 }
             }
         }
+    }
+    
+    private var detailsFlowView: some View {
+        Group {
+            if let eventID = lastLoggedEventID {
+                AddAttackDetailsFlow(eventID: eventID, store: store)
+                    .environmentObject(store)
+                    .environmentObject(SettingsManager())
+            }
+        }
+    }
+    
+    private func handleQuickLog() {
+        let newEvent = MigraineEvent(loggedAt: Date())
+        lastLoggedEventID = newEvent.id
+        store.updateEvent(newEvent)
+        pendingEvent = newEvent
+        
+        showConfirmation = true
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            showConfirmation = false
+        }
+    }
+    
+    private func handleDelete() {
+        if let pending = pendingEvent {
+            store.deleteEvent(pending)
+            pendingEvent = nil
+        }
+    }
+    
+    private func checkForPendingEvent() {
+        pendingEvent = store.todaysIncompleteEvent()
+    }
+}
+
+// MARK: - Sub-Views
+
+private struct QuickLogButton: View {
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: Theme.Spacing.large) {
+                Image(systemName: "bolt.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(Theme.Colors.primaryAction)
+                
+                Text("Log Migraine")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(Theme.Colors.primaryText)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Theme.Spacing.jumbo * 1.5)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct PendingEventCard: View {
+    let event: MigraineEvent
+    let onDelete: () -> Void
+    let onAddDetails: () -> Void
+    
+    var body: some View {
+        VStack(spacing: Theme.Spacing.extraLarge) {
+            // Simple header with time
+            VStack(spacing: Theme.Spacing.small) {
+                Image(systemName: "bolt.circle.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(Theme.Colors.primaryAction)
+                
+                Text(event.loggedAt.formatted(date: .omitted, time: .shortened))
+                    .font(.title)
+                    .fontWeight(.bold)
+            }
+            
+            // Two big clean buttons
+            VStack(spacing: Theme.Spacing.medium) {
+                Button(action: onAddDetails) {
+                    HStack {
+                        Image(systemName: "square.and.pencil")
+                            .font(.title3)
+                        Text("Add Details")
+                            .font(.headline)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Theme.Spacing.large)
+                    .background(Theme.Colors.primaryAction)
+                    .foregroundColor(Theme.Colors.inverseText)
+                    .cornerRadius(Theme.CornerRadius.medium)
+                }
+                
+                Button(action: onDelete) {
+                    HStack {
+                        Image(systemName: "xmark")
+                            .font(.title3)
+                        Text("Delete")
+                            .font(.headline)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Theme.Spacing.large)
+                    .background(Theme.Colors.secondaryBackground)
+                    .foregroundColor(Theme.Colors.primaryText)
+                    .cornerRadius(Theme.CornerRadius.medium)
+                }
+            }
+        }
+        .padding(Theme.Spacing.extraLarge)
+    }
+}
+
+private struct ConfirmationOverlay: View {
+    var body: some View {
+        VStack(spacing: Theme.Spacing.medium) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 70))
+                .foregroundColor(Theme.Colors.success)
+            
+            Text("Saved")
+                .font(.title3)
+                .fontWeight(.semibold)
+        }
+        .padding(Theme.Spacing.extraLarge)
+        .background(Theme.Colors.cardBackground)
+        .cornerRadius(Theme.CornerRadius.extraLarge)
+        .shadow(color: Theme.Shadow.color, radius: Theme.Shadow.Radius.large)
+        .transition(.scale.combined(with: .opacity))
     }
 }
 

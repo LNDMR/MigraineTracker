@@ -9,6 +9,7 @@ import SwiftUI
 
 struct GroupedListView: View {
     @EnvironmentObject var store: MigraineStore
+    @State private var expandedMonths: Set<String> = []
     
     private var groupedEvents: [(String, [MigraineEvent])] {
         let grouped = Dictionary(grouping: store.events) { event -> String in
@@ -32,42 +33,79 @@ struct GroupedListView: View {
     }
     
     var body: some View {
-        List {
+        ScrollView {
             if store.events.isEmpty {
                 ContentUnavailableView(
                     "No Migraines Logged",
                     systemImage: "calendar",
                     description: Text("Your tracked migraines will appear here.")
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, 100)
             } else {
-                ForEach(groupedEvents, id: \.0) { month, events in
-                    Section {
-                        ForEach(events) { event in
-                            NavigationLink {
-                                EventDetailView(event: event)
+                LazyVStack(alignment: .leading, spacing: Theme.Spacing.large) {
+                    ForEach(groupedEvents, id: \.0) { month, events in
+                        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                            // Month header - tappable to expand/collapse
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    if expandedMonths.contains(month) {
+                                        expandedMonths.remove(month)
+                                    } else {
+                                        expandedMonths.insert(month)
+                                    }
+                                }
                             } label: {
-                                EventRow(event: event)
+                                HStack {
+                                    Text(month)
+                                        .font(.title3)
+                                        .fontWeight(.semibold)
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.subheadline)
+                                        .foregroundColor(Theme.Colors.primaryAction)
+                                        .rotationEffect(.degrees(expandedMonths.contains(month) ? 90 : 0))
+                                    
+                                    Spacer()
+                                    
+                                    Text("\(events.count) attacks")
+                                        .font(.subheadline)
+                                        .foregroundColor(Theme.Colors.secondaryText)
+                                }
+                                .padding(.horizontal, Theme.Spacing.medium)
+                                .contentShape(Rectangle())
                             }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    store.deleteEvent(event)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+                            .buttonStyle(.plain)
+                            
+                            // Events - only show if expanded
+                            if expandedMonths.contains(month) {
+                                ForEach(events) { event in
+                                    NavigationLink {
+                                        EventDetailView(event: event)
+                                    } label: {
+                                        EventRow(event: event)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .contextMenu {
+                                        Button(role: .destructive) {
+                                            store.deleteEvent(event)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
                                 }
                             }
                         }
-                    } header: {
-                        HStack {
-                            Text(month)
-                            Spacer()
-                            Text("\(events.count) attacks")
-                                .font(.caption)
-                                .foregroundColor(Theme.Colors.secondaryText)
-                        }
                     }
                 }
+                .padding(Theme.Spacing.medium)
             }
         }
-        .listStyle(.insetGrouped)
+        .onAppear {
+            // Expand current month by default
+            if let currentMonth = groupedEvents.first?.0 {
+                expandedMonths.insert(currentMonth)
+            }
+        }
     }
 }

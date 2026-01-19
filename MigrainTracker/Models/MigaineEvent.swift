@@ -21,6 +21,15 @@ struct MigraineEvent: Identifiable, Codable, Equatable {
     var medicationHelped: Bool?
     var notes: String?
     
+    var hasDetails: Bool {
+        return symptomsOnsetTime != nil ||
+               duration != nil ||
+               painLevel != nil ||
+               symptoms != nil ||
+               medication != nil ||
+               notes != nil
+    }
+    
     // MARK: - Pain Level
     
     enum PainLevel: Int, Codable, CaseIterable {

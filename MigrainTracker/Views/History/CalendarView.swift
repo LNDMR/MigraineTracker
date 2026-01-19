@@ -9,10 +9,15 @@ import SwiftUI
 
 struct CalendarView: View {
     @EnvironmentObject var store: MigraineStore
+    @EnvironmentObject var settings: SettingsManager
     @Binding var selectedDate: Date?
+    @Binding var selectedEvent: MigraineEvent?
+    @Binding var showEventDetail: Bool
     @Binding var showDateEvents: Bool
     
     @State private var currentMonth = Date()
+    @State private var createdEventID: UUID?
+    @State private var showDetailsFlow = false
     
     private let calendar = Calendar.current
     private let daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -66,8 +71,7 @@ struct CalendarView: View {
                             isToday: calendar.isDateInToday(date),
                             isCurrentMonth: calendar.isDate(date, equalTo: currentMonth, toGranularity: .month)
                         ) {
-                            selectedDate = date
-                            showDateEvents = !eventsFor(date: date).isEmpty
+                            handleDayTap(date: date)
                         }
                     } else {
                         Color.clear
@@ -94,6 +98,47 @@ struct CalendarView: View {
             
             Spacer()
         }
+        .fullScreenCover(isPresented: $showDetailsFlow) {
+            if let eventID = createdEventID {
+                AddAttackDetailsFlow(eventID: eventID, store: store)
+                    .environmentObject(store)
+                    .environmentObject(settings)
+            }
+        }
+    }
+    
+    // MARK: - Day Tap Handler
+    
+    private func handleDayTap(date: Date) {
+        let events = eventsFor(date: date)
+        
+        if events.isEmpty {
+            // No events on this day - create new event with this date and open details flow
+            createEventForDate(date)
+        } else if events.count == 1 {
+            // Single event - go directly to detail view
+            selectedEvent = events.first
+            showEventDetail = true
+        } else {
+            // Multiple events - show list sheet to choose
+            selectedDate = date
+            showDateEvents = true
+        }
+    }
+    
+    private func createEventForDate(_ date: Date) {
+        // Create event with selected date (keep the time as-is or set to noon)
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: date)
+        components.hour = 12  // Default to noon
+        components.minute = 0
+        
+        let eventDate = calendar.date(from: components) ?? date
+        
+        let newEvent = MigraineEvent(loggedAt: eventDate)
+        store.updateEvent(newEvent)
+        createdEventID = newEvent.id
+        showDetailsFlow = true
     }
     
     // MARK: - Helper Functions
@@ -171,30 +216,23 @@ struct DayCell: View {
     
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: Theme.Spacing.tiny) {
+            ZStack {
+                // Circle around date if has events
+                if !events.isEmpty {
+                    Circle()
+                        .stroke(Theme.Colors.primaryAction, lineWidth: 2)
+                        .frame(width: 32, height: 32)
+                }
+                
                 Text("\(calendar.component(.day, from: date))")
                     .font(.body)
                     .fontWeight(isToday ? .bold : .regular)
                     .foregroundColor(isCurrentMonth ? (isToday ? Theme.Colors.primaryAction : Theme.Colors.primaryText) : Theme.Colors.secondaryText)
-                
-                // Event dots
-                HStack(spacing: 2) {
-                    ForEach(events.prefix(3)) { event in
-                        Circle()
-                            .fill(colorFor(painLevel: event.painLevel))
-                            .frame(width: Theme.Size.dotTiny, height: Theme.Size.dotTiny)
-                    }
-                }
-                .frame(height: Theme.Size.dotTiny)
             }
             .frame(maxWidth: .infinity, minHeight: Theme.Size.touchTarget)
             .background(isToday ? Theme.Colors.primaryAction.opacity(0.1) : Color.clear)
             .cornerRadius(Theme.CornerRadius.small)
         }
         .buttonStyle(.plain)
-    }
-    
-    private func colorFor(painLevel: MigraineEvent.PainLevel?) -> Color {
-        painLevel?.color ?? Theme.Colors.Raw.lavenderGrey.opacity(0.3)
     }
 }
