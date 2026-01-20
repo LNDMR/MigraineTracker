@@ -18,13 +18,17 @@ struct EventDetailView: View {
     @State private var showDeleteAlert = false
     @State private var showDateEditor = false
     @State private var editingDate = Date()
-    @State private var editingTime = Date()
     @State private var showValidationError = false
     @State private var validationMessage = ""
     
     // Computed property that always gets fresh data from store
     private var event: MigraineEvent? {
         store.event(withID: eventID)
+    }
+    
+    private var isToday: Bool {
+        guard let event = event else { return false }
+        return Calendar.current.isDateInToday(event.loggedAt)
     }
     
     var body: some View {
@@ -43,15 +47,20 @@ struct EventDetailView: View {
         .navigationTitle("Migraine Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if event != nil {
+            if event != nil, promptForDetails {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
-                        if promptForDetails {
-                            Button {
-                                showEditFlow = true
-                            } label: {
-                                Label("Edit", systemImage: "pencil")
-                            }
+                        Button {
+                            showEditFlow = true
+                        } label: {
+                            Label("Edit Details", systemImage: "pencil")
+                        }
+                        
+                        Button {
+                            editingDate = event?.loggedAt ?? Date()
+                            showDateEditor = true
+                        } label: {
+                            Label("Change Date", systemImage: "calendar")
                         }
                         
                         Button(role: .destructive) {
@@ -65,12 +74,10 @@ struct EventDetailView: View {
                 }
             }
         }
-        .sheet(isPresented: $showEditFlow) {
-            NavigationStack {
-                AddAttackDetailsFlow(eventID: eventID, store: store)
-                    .environmentObject(store)
-                    .environmentObject(SettingsManager())
-            }
+        .fullScreenCover(isPresented: $showEditFlow) {
+            AddAttackDetailsFlow(eventID: eventID, store: store)
+                .environmentObject(store)
+                .environmentObject(SettingsManager())
         }
         .sheet(isPresented: $showDateEditor) {
             dateEditorSheet
@@ -84,10 +91,7 @@ struct EventDetailView: View {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
                 if let event = event {
-                    print("🗑️ Deleting event with ID: \(event.id)")
-                    print("📊 Events before delete: \(store.events.count)")
                     store.deleteEvent(event)
-                    print("📊 Events after delete: \(store.events.count)")
                     dismiss()
                 }
             }
@@ -99,43 +103,163 @@ struct EventDetailView: View {
     @ViewBuilder
     private func eventContent(_ event: MigraineEvent) -> some View {
         ScrollView {
-            VStack(spacing: Theme.Spacing.large) {
-                // Header Card - Tappable to edit date/time
-                Button(action: {
-                    editingDate = event.loggedAt
-                    editingTime = event.loggedAt
-                    showDateEditor = true
-                }) {
-                    VStack(spacing: Theme.Spacing.small) {
-                        HStack {
-                                Text(event.loggedAt, style: .date)
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                            
-                            Spacer()
-                            
-                            Image(systemName: "pencil.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(Theme.Colors.primaryAction.opacity(0.6))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(Theme.Spacing.regular)
-                    .background(Theme.Colors.secondaryBackground)
-                    .cornerRadius(Theme.CornerRadius.medium)
-                }
-                .buttonStyle(.plain)
+            VStack(alignment: .leading, spacing: Theme.Spacing.large) {
+                // Date Header - Display only, not tappable
+                Text(event.loggedAt.formatted(.dateTime.weekday(.wide).day().month(.wide).year()))
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(Theme.Colors.primaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                Divider()
                 
                 // Show details only if promptForDetails is ON
                 if promptForDetails {
                     if !event.hasDetails {
                         noDetailsPrompt
                     } else {
-                        detailsSections(for: event)
+                        detailsContent(for: event)
                     }
                 }
             }
-            .padding(Theme.Spacing.regular)
+            .padding(Theme.Spacing.large)
+        }
+    }
+    
+    // MARK: - No Details Prompt
+    
+    private var noDetailsPrompt: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.large) {
+            Text("No details logged yet")
+                .font(.headline)
+                .foregroundColor(Theme.Colors.secondaryText)
+            
+            Button {
+                showEditFlow = true
+            } label: {
+                Text("Add Details")
+                    .font(.body)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Theme.Spacing.large)
+                    .background(Theme.Colors.primaryAction)
+                    .cornerRadius(Theme.CornerRadius.medium)
+            }
+        }
+    }
+    
+    // MARK: - Details Content
+    
+    @ViewBuilder
+    private func detailsContent(for event: MigraineEvent) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.extraLarge) {
+            
+            // Onset Time
+            if let onset = event.symptomsOnsetTime {
+                let preposition = onset == .night ? "at" : "in the"
+                Text("Symptoms began \(preposition) \(onset.label.lowercased())")
+                    .font(.body)
+                    .foregroundColor(Theme.Colors.primaryText)
+                
+                Divider()
+            }
+            
+            // Duration
+            if let duration = event.duration {
+                Text("Attack lasted \(duration.label.lowercased())")
+                    .font(.body)
+                    .foregroundColor(Theme.Colors.primaryText)
+                
+                Divider()
+            }
+            
+            // Pain Level (context-aware tense)
+            if let painLevel = event.painLevel {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    Text("Pain level \(isToday ? "is" : "was") \(painLevel.label.lowercased())")
+                        .font(.body)
+                        .foregroundColor(Theme.Colors.primaryText)
+                    
+                    Text(painDescription(for: painLevel))
+                        .font(.subheadline)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                }
+                
+                Divider()
+            }
+            
+            // Symptoms
+            if let symptoms = event.symptoms, !symptoms.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                    Text("Experienced")
+                        .font(.body)
+                        .foregroundColor(Theme.Colors.primaryText)
+                    
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                        ForEach(symptoms, id: \.self) { symptom in
+                            HStack(spacing: Theme.Spacing.small) {
+                                Text("•")
+                                    .foregroundColor(Theme.Colors.primaryAction)
+                                Text(symptom)
+                                    .font(.body)
+                            }
+                        }
+                    }
+                }
+                
+                Divider()
+            }
+            
+            // Medication
+            if let medication = event.medication {
+                HStack {
+                    Text("Took \(medication)")
+                        .font(.body)
+                        .foregroundColor(Theme.Colors.primaryText)
+                    
+                    if let helped = event.medicationHelped {
+                        Text(helped ? " - it helped" : " - it didn't help")
+                            .font(.body)
+                            .foregroundColor(helped ? Theme.Colors.success : Theme.Colors.error)
+                    }
+                }
+                
+                Divider()
+            }
+            
+            // Notes
+            if let notes = event.notes, !notes.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                    Text("Notes")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                        .textCase(.uppercase)
+                    
+                    Text(notes)
+                        .font(.body)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                        .lineSpacing(4)
+                }
+            }
+        }
+    }
+    
+    // Convert pain description to past tense if not today
+    private func painDescription(for level: MigraineEvent.PainLevel) -> String {
+        if isToday {
+            return level.description
+        }
+        
+        // Convert to past tense
+        switch level {
+        case .mild:
+            return "I was able to go about my day"
+        case .moderate:
+            return "I was limited in what I could do"
+        case .severe:
+            return "I was completely out of action"
         }
     }
     
@@ -185,7 +309,7 @@ struct EventDetailView: View {
             }
             .padding(.bottom, Theme.Spacing.large)
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.height(280)])
         .presentationDragIndicator(.visible)
     }
     
@@ -225,156 +349,7 @@ struct EventDetailView: View {
         showDateEditor = false
     }
     
-    // MARK: - No Details Prompt
-    
-    private var noDetailsPrompt: some View {
-        VStack(spacing: Theme.Spacing.large) {
-            Text("No details logged yet")
-                .font(.title3)
-                .fontWeight(.semibold)
-            
-            Button {
-                showEditFlow = true
-            } label: {
-                Text("Add Details")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Theme.Spacing.regular)
-                    .background(Theme.Colors.primaryAction)
-                    .foregroundColor(Theme.Colors.inverseText)
-                    .cornerRadius(Theme.CornerRadius.medium)
-            }
-            .padding(.horizontal, Theme.Spacing.huge)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.jumbo)
-        .background(Theme.Colors.secondaryBackground)
-        .cornerRadius(Theme.CornerRadius.large)
-    }
-    
-    // MARK: - Details Sections
-    
-    @ViewBuilder
-    private func detailsSections(for event: MigraineEvent) -> some View {
-        // Pain Level
-        if let painLevel = event.painLevel {
-            DetailSection(title: "Pain Level", icon: "bolt.fill") {
-                HStack {
-                    Text(painLevel.label)
-                        .font(.headline)
-                    Spacer()
-                    ForEach(1...3, id: \.self) { level in
-                        Circle()
-                            .fill(level <= painLevel.rawValue ? severityColor(for: painLevel) : Theme.Colors.secondaryBackground)
-                            .frame(width: Theme.Size.indicator, height: Theme.Size.indicator)
-                    }
-                }
-                
-                Text(painLevel.description)
-                    .font(.subheadline)
-                    .foregroundColor(Theme.Colors.secondaryText)
-            }
-        }
-        
-        // Onset Time
-        if let onset = event.symptomsOnsetTime {
-            DetailSection(title: "Symptoms Began", icon: onset.icon) {
-                HStack {
-                    Text(onset.label)
-                        .font(.headline)
-                    Spacer()
-                    Text(onset.timeRange)
-                        .font(.subheadline)
-                        .foregroundColor(Theme.Colors.secondaryText)
-                }
-            }
-        }
-        
-        // Duration
-        if let duration = event.duration {
-            DetailSection(title: "Duration", icon: "clock.fill") {
-                Text(duration.label)
-                    .font(.headline)
-            }
-        }
-        
-        // Symptoms
-        if let symptoms = event.symptoms, !symptoms.isEmpty {
-            DetailSection(title: "Symptoms", icon: "list.bullet") {
-                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    ForEach(symptoms, id: \.self) { symptom in
-                        HStack {
-                            Image(systemName: "circle.fill")
-                                .font(.system(size: 6))
-                                .foregroundColor(Theme.Colors.primaryAction)
-                            Text(symptom)
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Medication
-        if let medication = event.medication {
-            DetailSection(title: "Medication", icon: "cross.case.fill") {
-                HStack {
-                    Text(medication)
-                        .font(.headline)
-                    
-                    Spacer()
-                    
-                    if let helped = event.medicationHelped {
-                        Label(helped ? "Helped" : "Didn't Help", systemImage: helped ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .font(.subheadline)
-                            .foregroundColor(helped ? Theme.Colors.success : Theme.Colors.error)
-                    }
-                }
-            }
-        }
-        
-        // Notes
-        if let notes = event.notes, !notes.isEmpty {
-            DetailSection(title: "Notes", icon: "note.text") {
-                Text(notes)
-                    .font(.body)
-                    .foregroundColor(Theme.Colors.secondaryText)
-            }
-        }
-    }
-    
     private func severityColor(for level: MigraineEvent.PainLevel) -> Color {
         level.color
-    }
-}
-
-struct DetailSection<Content: View>: View {
-    let title: String
-    let icon: String
-    let content: Content
-    
-    init(title: String, icon: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.icon = icon
-        self.content = content()
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(Theme.Colors.primaryAction)
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(Theme.Colors.secondaryText)
-                    .textCase(.uppercase)
-            }
-            
-            content
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Theme.Spacing.regular)
-        .background(Theme.Colors.secondaryBackground)
-        .cornerRadius(Theme.CornerRadius.medium)
     }
 }
