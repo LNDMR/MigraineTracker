@@ -15,7 +15,7 @@ struct QuickLogView: View {
     @State private var lastLoggedEventID: UUID?
     @State private var cardDismissed = false
     
-    // Check for ANY event today (not just incomplete)
+    // Check for ANY event today
     private var todaysEvent: MigraineEvent? {
         let calendar = Calendar.current
         return store.events.first { event in
@@ -23,9 +23,16 @@ struct QuickLogView: View {
         }
     }
     
-    private var showPendingCard: Bool {
+    private var shouldShowCard: Bool {
         guard let event = todaysEvent else { return false }
-        return promptForDetails && !event.hasDetails && !cardDismissed
+        
+        if promptForDetails {
+            // Toggle ON: Only show if no details and not dismissed
+            return !event.hasDetails && !cardDismissed
+        } else {
+            // Toggle OFF: Always show (for delete access)
+            return true
+        }
     }
     
     var body: some View {
@@ -33,11 +40,11 @@ struct QuickLogView: View {
             VStack {
                 Spacer()
                 
-                if let event = todaysEvent {
-                    // Event exists for today
+                if let event = todaysEvent, shouldShowCard {
+                    // Event exists and should show card
                     LoggedMigraineCard(
                         event: event,
-                        showActions: showPendingCard,
+                        showDetailsButton: promptForDetails,
                         onDelete: {
                             withAnimation {
                                 store.deleteEvent(event)
@@ -60,8 +67,7 @@ struct QuickLogView: View {
             }
             .navigationTitle("Quick Log")
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: todaysEvent?.id)
-            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: cardDismissed)
-            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showPendingCard)
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: shouldShowCard)
             .fullScreenCover(isPresented: $showDetailsFlow) {
                 detailsFlowView
             }
@@ -142,7 +148,7 @@ private struct QuickLogButton: View {
 
 private struct LoggedMigraineCard: View {
     let event: MigraineEvent
-    let showActions: Bool
+    let showDetailsButton: Bool
     let onDelete: () -> Void
     let onAddDetails: () -> Void
     
@@ -199,20 +205,20 @@ private struct LoggedMigraineCard: View {
                     .multilineTextAlignment(.center)
             }
             
-            // Conditional buttons
-            if showActions {
-                HStack(spacing: Theme.Spacing.jumbo) {
+            // Action buttons - always visible, Details conditionally shown
+            HStack(spacing: Theme.Spacing.jumbo) {
+                if showDetailsButton {
                     Button(action: onAddDetails) {
                         Text("Details")
                             .font(.body)
                             .foregroundColor(Theme.Colors.primaryAction)
                     }
-                    
-                    Button(action: onDelete) {
-                        Text("Delete")
-                            .font(.body)
-                            .foregroundColor(Theme.Colors.secondaryText)
-                    }
+                }
+                
+                Button(action: onDelete) {
+                    Text("Delete")
+                        .font(.body)
+                        .foregroundColor(Theme.Colors.secondaryText)
                 }
             }
         }

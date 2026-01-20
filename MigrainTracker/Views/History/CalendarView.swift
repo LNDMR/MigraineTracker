@@ -250,10 +250,6 @@ struct DayCell: View {
             .frame(maxWidth: .infinity, minHeight: Theme.Size.touchTarget)
             .background(isToday ? Theme.Colors.primaryAction.opacity(0.1) : Color.clear)
             .cornerRadius(Theme.CornerRadius.small)
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                    .strokeBorder(isToday ? Theme.Colors.primaryAction : Color.clear, lineWidth: 2)
-            )
         }
         .buttonStyle(.plain)
     }
