@@ -10,68 +10,34 @@ import SwiftUI
 struct HistoryView: View {
     @EnvironmentObject var store: MigraineStore
     @EnvironmentObject var settings: SettingsManager
-    @AppStorage("historyViewMode") private var viewMode: String = "calendar"
+    @AppStorage("promptForDetails") private var promptForDetails = true
     
     @State private var selectedDate: Date?
     @State private var selectedEvent: MigraineEvent?
     @State private var showEventDetail = false
-    @State private var showDateEvents = false
-    @State private var showAddPastEvent = false
-    @State private var pastEventDate = Date()
-    @State private var pastEventTime = Date()
+    @State private var showCreateConfirmation = false
+    @State private var confirmationDate = Date()
     @State private var createdEventID: UUID?
     @State private var showDetailsFlow = false
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Segmented Control for View Mode
-                Picker("View Mode", selection: $viewMode) {
-                    Label("Calendar", systemImage: "calendar")
-                        .tag("calendar")
-                    Label("List", systemImage: "list.bullet")
-                        .tag("list")
+            CalendarView(
+                selectedEvent: $selectedEvent,
+                showEventDetail: $showEventDetail,
+                onEmptyDayTapped: { date in
+                    confirmationDate = date
+                    showCreateConfirmation = true
                 }
-                .pickerStyle(.segmented)
-                .padding()
-                
-                // Content
-                Group {
-                    if viewMode == "calendar" {
-                        CalendarView(
-                            selectedDate: $selectedDate,
-                            selectedEvent: $selectedEvent,
-                            showEventDetail: $showEventDetail,
-                            showDateEvents: $showDateEvents
-                        )
-                    } else {
-                        GroupedListView()
-                    }
-                }
-            }
+            )
             .navigationTitle("History")
             .navigationDestination(isPresented: $showEventDetail) {
                 if let event = selectedEvent {
                     EventDetailView(eventID: event.id)
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showAddPastEvent = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(Theme.Colors.primaryAction)
-                    }
-                }
-            }
-            .sheet(isPresented: $showDateEvents) {
-                if let date = selectedDate {
-                    DateEventsSheet(date: date)
-                }
-            }
-            .sheet(isPresented: $showAddPastEvent) {
-                datePickerSheet
+            .sheet(isPresented: $showCreateConfirmation) {
+                confirmationSheet
             }
             .fullScreenCover(isPresented: $showDetailsFlow) {
                 if let eventID = createdEventID {
@@ -83,62 +49,96 @@ struct HistoryView: View {
         }
     }
     
-    private var datePickerSheet: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    DatePicker("Date", selection: $pastEventDate, displayedComponents: .date)
-                    DatePicker("Time", selection: $pastEventTime, displayedComponents: .hourAndMinute)
-                } header: {
-                    Text("When did the migraine occur?")
+    private var confirmationSheet: some View {
+        VStack(spacing: Theme.Spacing.large) {
+            Spacer()
+            
+            // Title
+            Text("Log Migraine")
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            // Show selected date with weekday (read-only)
+            Text(confirmationDate.formatted(date: .complete, time: .omitted))
+                .font(.headline)
+                .foregroundColor(Theme.Colors.secondaryText)
+                .padding(.horizontal, Theme.Spacing.large)
+                .padding(.vertical, Theme.Spacing.medium)
+                .background(Theme.Colors.secondaryBackground.opacity(0.5))
+                .cornerRadius(Theme.CornerRadius.medium)
+            
+            // Subtitle
+            Text("Add details or keep it simple")
+                .font(.subheadline)
+                .foregroundColor(Theme.Colors.secondaryText)
+                .multilineTextAlignment(.center)
+            
+            Spacer()
+            
+            // Action Buttons
+            VStack(spacing: Theme.Spacing.medium) {
+                // Add Details Button
+                Button(action: { createEvent(openDetails: true) }) {
+                    HStack {
+                        Image(systemName: "square.and.pencil")
+                        Text("Add Details")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Theme.Spacing.large)
+                    .background(Theme.Colors.primaryAction)
+                    .cornerRadius(Theme.CornerRadius.medium)
                 }
                 
-                Section {
-                    Button("Continue to Details") {
-                        createPastEvent()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .foregroundColor(Theme.Colors.primaryAction)
-                    .font(.headline)
+                // Save Button
+                Button(action: { createEvent(openDetails: false) }) {
+                    Text("Save")
+                        .font(.body)
+                        .foregroundColor(Theme.Colors.primaryText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Theme.Spacing.large)
+                        .background(Theme.Colors.secondaryBackground)
+                        .cornerRadius(Theme.CornerRadius.medium)
+                }
+                
+                // Cancel
+                Button(action: { showCreateConfirmation = false }) {
+                    Text("Cancel")
+                        .font(.body)
+                        .foregroundColor(Theme.Colors.secondaryText)
+                        .padding(.vertical, Theme.Spacing.small)
                 }
             }
-            .navigationTitle("Add Past Migraine")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        showAddPastEvent = false
-                    }
-                }
-            }
+            .padding(.horizontal, Theme.Spacing.large)
+            .padding(.bottom, Theme.Spacing.large)
         }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
     
-    private func createPastEvent() {
-        // Combine date and time
+    private func createEvent(openDetails: Bool) {
+        // Use noon as default time
         let calendar = Calendar.current
-        let dateComponents = calendar.dateComponents([.year, .month, .day], from: pastEventDate)
-        let timeComponents = calendar.dateComponents([.hour, .minute], from: pastEventTime)
+        var components = calendar.dateComponents([.year, .month, .day], from: confirmationDate)
+        components.hour = 12
+        components.minute = 0
         
-        var combined = DateComponents()
-        combined.year = dateComponents.year
-        combined.month = dateComponents.month
-        combined.day = dateComponents.day
-        combined.hour = timeComponents.hour
-        combined.minute = timeComponents.minute
+        let finalDate = calendar.date(from: components) ?? confirmationDate
         
-        let finalDate = calendar.date(from: combined) ?? pastEventDate
-        
-        // Create event with past date
+        // Create event
         let newEvent = MigraineEvent(loggedAt: finalDate)
         store.updateEvent(newEvent)
         createdEventID = newEvent.id
         
-        // Close date picker and open details flow
-        showAddPastEvent = false
+        // Close confirmation sheet
+        showCreateConfirmation = false
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            showDetailsFlow = true
+        // Optionally open details flow
+        if openDetails {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                showDetailsFlow = true
+            }
         }
     }
 }

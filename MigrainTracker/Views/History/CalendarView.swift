@@ -9,16 +9,17 @@ import SwiftUI
 
 struct CalendarView: View {
     @EnvironmentObject var store: MigraineStore
-    @EnvironmentObject var settings: SettingsManager
     @AppStorage("promptForDetails") private var promptForDetails = true
-    @Binding var selectedDate: Date?
+    
     @Binding var selectedEvent: MigraineEvent?
     @Binding var showEventDetail: Bool
-    @Binding var showDateEvents: Bool
+    var onEmptyDayTapped: (Date) -> Void
     
     @State private var currentMonth = Date()
-    @State private var createdEventID: UUID?
-    @State private var showDetailsFlow = false
+    @State private var showMinimalDeleteAlert = false
+    @State private var selectedEventForDelete: MigraineEvent?
+    @State private var showMinimalCreateAlert = false
+    @State private var selectedDateForCreate: Date?
     
     private let calendar = Calendar.current
     private let daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -68,13 +69,11 @@ struct CalendarView: View {
                     if let date = date {
                         DayCell(
                             date: date,
-                            events: eventsFor(date: date),
+                            event: eventFor(date: date),
                             isToday: calendar.isDateInToday(date),
                             isCurrentMonth: calendar.isDate(date, equalTo: currentMonth, toGranularity: .month)
                         ) {
-                            if promptForDetails {
-                                handleDayTap(date: date)
-                            }
+                            handleDayTap(date: date)
                         }
                     } else {
                         Color.clear
@@ -101,47 +100,53 @@ struct CalendarView: View {
             
             Spacer()
         }
-        .fullScreenCover(isPresented: $showDetailsFlow) {
-            if let eventID = createdEventID {
-                AddAttackDetailsFlow(eventID: eventID, store: store)
-                    .environmentObject(store)
-                    .environmentObject(settings)
+        .alert(selectedEventForDelete?.loggedAt.formatted(date: .complete, time: .omitted) ?? "", isPresented: $showMinimalDeleteAlert) {
+            Button("Keep", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                if let event = selectedEventForDelete {
+                    store.deleteEvent(event)
+                }
             }
+        } message: {
+            Text("Delete this migraine?")
+        }
+        .alert(selectedDateForCreate?.formatted(date: .complete, time: .omitted) ?? "", isPresented: $showMinimalCreateAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Log Migraine") {
+                if let date = selectedDateForCreate {
+                    createMinimalEvent(for: date)
+                }
+            }
+        } message: {
+            Text("Log migraine for this day?")
         }
     }
     
     // MARK: - Day Tap Handler
     
     private func handleDayTap(date: Date) {
-        let events = eventsFor(date: date)
-        
-        if events.isEmpty {
-            // No events on this day - create new event with this date and open details flow
-            createEventForDate(date)
-        } else if events.count == 1 {
-            // Single event - go directly to detail view
-            selectedEvent = events.first
-            showEventDetail = true
+        if let event = eventFor(date: date) {
+            // Has event
+            if promptForDetails {
+                // Full mode: Navigate to detail view
+                selectedEvent = event
+                showEventDetail = true
+            } else {
+                // Minimal mode: Show delete confirmation
+                selectedEventForDelete = event
+                showMinimalDeleteAlert = true
+            }
         } else {
-            // Multiple events - show list sheet to choose
-            selectedDate = date
-            showDateEvents = true
+            // No event
+            if promptForDetails {
+                // Full mode: Show creation sheet
+                onEmptyDayTapped(date)
+            } else {
+                // Minimal mode: Show create confirmation
+                selectedDateForCreate = date
+                showMinimalCreateAlert = true
+            }
         }
-    }
-    
-    private func createEventForDate(_ date: Date) {
-        // Create event with selected date (keep the time as-is or set to noon)
-        let calendar = Calendar.current
-        var components = calendar.dateComponents([.year, .month, .day], from: date)
-        components.hour = 12  // Default to noon
-        components.minute = 0
-        
-        let eventDate = calendar.date(from: components) ?? date
-        
-        let newEvent = MigraineEvent(loggedAt: eventDate)
-        store.updateEvent(newEvent)
-        createdEventID = newEvent.id
-        showDetailsFlow = true
     }
     
     // MARK: - Helper Functions
@@ -176,13 +181,11 @@ struct CalendarView: View {
         
         var days: [Date?] = []
         
-        // Add leading empty cells (Monday = 2 in weekday, we want 0-based where Monday = 0)
         let leadingEmptyDays = (firstWeekday == 1 ? 6 : firstWeekday - 2)
         for _ in 0..<leadingEmptyDays {
             days.append(nil)
         }
         
-        // Add all days in month
         var date = monthInterval.start
         while date < monthInterval.end {
             days.append(date)
@@ -193,8 +196,8 @@ struct CalendarView: View {
         return days
     }
     
-    private func eventsFor(date: Date) -> [MigraineEvent] {
-        store.events.filter { event in
+    private func eventFor(date: Date) -> MigraineEvent? {
+        store.events.first { event in
             calendar.isDate(event.loggedAt, inSameDayAs: date)
         }
     }
@@ -204,13 +207,25 @@ struct CalendarView: View {
             calendar.isDate(event.loggedAt, equalTo: currentMonth, toGranularity: .month)
         }.count
     }
+    
+    private func createMinimalEvent(for date: Date) {
+        // Create event with selected date at noon
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: date)
+        components.hour = 12
+        components.minute = 0
+        
+        let eventDate = calendar.date(from: components) ?? date
+        let newEvent = MigraineEvent(loggedAt: eventDate)
+        store.updateEvent(newEvent)
+    }
 }
 
 // MARK: - Day Cell
 
 struct DayCell: View {
     let date: Date
-    let events: [MigraineEvent]
+    let event: MigraineEvent?
     let isToday: Bool
     let isCurrentMonth: Bool
     let onTap: () -> Void
@@ -220,8 +235,8 @@ struct DayCell: View {
     var body: some View {
         Button(action: onTap) {
             ZStack {
-                // Circle around date if has events
-                if !events.isEmpty {
+                // Circle around date if has event
+                if event != nil {
                     Circle()
                         .stroke(Theme.Colors.primaryAction, lineWidth: 2)
                         .frame(width: 32, height: 32)
@@ -235,6 +250,10 @@ struct DayCell: View {
             .frame(maxWidth: .infinity, minHeight: Theme.Size.touchTarget)
             .background(isToday ? Theme.Colors.primaryAction.opacity(0.1) : Color.clear)
             .cornerRadius(Theme.CornerRadius.small)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .strokeBorder(isToday ? Theme.Colors.primaryAction : Color.clear, lineWidth: 2)
+            )
         }
         .buttonStyle(.plain)
     }

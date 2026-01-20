@@ -59,8 +59,27 @@ final class MigraineStore: ObservableObject {
     
     /// Delete a specific event
     func deleteEvent(_ event: MigraineEvent) {
+        print("🗑️ DELETE CALLED for event ID: \(event.id)")
+        print("📊 Events count BEFORE delete: \(events.count)")
+        print("📋 Event IDs BEFORE: \(events.map { $0.id.uuidString.prefix(8) })")
+        
         events.removeAll { $0.id == event.id }
+        
+        print("📊 Events count AFTER removeAll: \(events.count)")
+        print("📋 Event IDs AFTER: \(events.map { $0.id.uuidString.prefix(8) })")
+        
         saveEvents()
+        
+        print("💾 Save completed")
+        print("📁 File path: \(fileURL.path)")
+        
+        // Verify by re-reading
+        if let data = try? Data(contentsOf: fileURL),
+           let decoded = try? JSONDecoder().decode([MigraineEvent].self, from: data) {
+            print("✅ Verified file has \(decoded.count) events")
+        } else {
+            print("❌ Could not verify file")
+        }
     }
     
     /// Delete events at specific offsets (for List swipe-to-delete)

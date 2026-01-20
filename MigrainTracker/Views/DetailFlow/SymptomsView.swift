@@ -43,7 +43,6 @@ struct SymptomsView: View {
             
             if !settingsManager.hasConfiguredSymptoms {
                 // No symptoms configured - show setup prompt
-                Spacer()
                 
                 VStack(spacing: Theme.Spacing.large) {
                     Image(systemName: "list.bullet.circle")

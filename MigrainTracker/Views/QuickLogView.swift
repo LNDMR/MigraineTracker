@@ -11,71 +11,75 @@ struct QuickLogView: View {
     @EnvironmentObject var store: MigraineStore
     @AppStorage("promptForDetails") private var promptForDetails = true
     
-    @State private var showConfirmation = false
     @State private var showDetailsFlow = false
     @State private var lastLoggedEventID: UUID?
-    @State private var pendingEvent: MigraineEvent?
+    @State private var cardDismissed = false
+    
+    // Check for ANY event today (not just incomplete)
+    private var todaysEvent: MigraineEvent? {
+        let calendar = Calendar.current
+        return store.events.first { event in
+            calendar.isDateInToday(event.loggedAt)
+        }
+    }
+    
+    private var showPendingCard: Bool {
+        guard let event = todaysEvent else { return false }
+        return promptForDetails && !event.hasDetails && !cardDismissed
+    }
     
     var body: some View {
         NavigationStack {
             VStack {
                 Spacer()
                 
-                if promptForDetails {
-                    // Full mode - show pending card or button
-                    if let pending = pendingEvent {
-                        PendingEventCard(
-                            event: pending,
-                            onDelete: {
-                                store.deleteEvent(pending)
-                                pendingEvent = nil
-                            },
-                            onAddDetails: {
-                                lastLoggedEventID = pending.id
-                                showDetailsFlow = true
+                if let event = todaysEvent {
+                    // Event exists for today
+                    LoggedMigraineCard(
+                        event: event,
+                        showActions: showPendingCard,
+                        onDelete: {
+                            withAnimation {
+                                store.deleteEvent(event)
+                                cardDismissed = false
                             }
-                        )
-                    } else {
-                        QuickLogButton(onTap: handleQuickLog)
-                    }
+                        },
+                        onAddDetails: {
+                            lastLoggedEventID = event.id
+                            showDetailsFlow = true
+                        }
+                    )
+                    .transition(.scale.combined(with: .opacity))
+                    .id(event.id)
                 } else {
-                    // Minimal mode - just button, no pending card
+                    // No event for today - show quick log button
                     QuickLogButton(onTap: handleQuickLog)
                 }
                 
                 Spacer()
             }
             .navigationTitle("Quick Log")
-            .overlay {
-                if showConfirmation {
-                    if promptForDetails {
-                        // Full confirmation with buttons
-                        ConfirmationOverlay(
-                            onDelete: handleDelete,
-                            onAddDetails: {
-                                showConfirmation = false
-                                showDetailsFlow = true
-                            }
-                        )
-                    } else {
-                        // Minimal confirmation - just checkmark
-                        MinimalConfirmation()
-                    }
-                }
-            }
-            .animation(.spring(), value: showConfirmation)
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: todaysEvent?.id)
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: cardDismissed)
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showPendingCard)
             .fullScreenCover(isPresented: $showDetailsFlow) {
                 detailsFlowView
             }
-            .onAppear {
-                if promptForDetails {
-                    checkForPendingEvent()
+            .onChange(of: store.events.count) { oldValue, newValue in
+                // Reset card dismissed when event is deleted
+                if newValue < oldValue {
+                    cardDismissed = false
                 }
             }
             .onChange(of: showDetailsFlow) { _, isShowing in
-                if !isShowing && promptForDetails {
-                    checkForPendingEvent()
+                if !isShowing {
+                    // Reset card dismissed state after returning from details flow
+                    cardDismissed = false
                 }
+            }
+            .onChange(of: promptForDetails) { _, _ in
+                // Reset state when toggle changes
+                cardDismissed = false
             }
         }
     }
@@ -94,28 +98,7 @@ struct QuickLogView: View {
         let newEvent = MigraineEvent(loggedAt: Date())
         lastLoggedEventID = newEvent.id
         store.updateEvent(newEvent)
-        
-        if promptForDetails {
-            pendingEvent = newEvent
-        }
-        
-        showConfirmation = true
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + (promptForDetails ? 2.5 : 1.5)) {
-            showConfirmation = false
-        }
-    }
-    
-    private func handleDelete() {
-        if let pending = pendingEvent {
-            store.deleteEvent(pending)
-            pendingEvent = nil
-        }
-        showConfirmation = false
-    }
-    
-    private func checkForPendingEvent() {
-        pendingEvent = store.todaysIncompleteEvent()
+        cardDismissed = false
     }
 }
 
@@ -126,14 +109,28 @@ private struct QuickLogButton: View {
     
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: Theme.Spacing.large) {
-                Image(systemName: "bolt.circle.fill")
-                    .font(.system(size: 80))
-                    .foregroundColor(Theme.Colors.primaryAction)
+            VStack(spacing: Theme.Spacing.jumbo) {
+                // Organic blob visual with bolt
+                ZStack {
+                    NestedBlob(
+                        outerSeed: 1,
+                        innerSeed: 2,
+                        outerSize: 160,
+                        innerSize: 125,
+                        innerOffset: CGSize(width: -8, height: -6),
+                        outerColor: Theme.Colors.primaryAction.opacity(0.3),
+                        innerColor: Theme.Colors.primaryAction.opacity(0.6)
+                    )
+                    
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 60, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .frame(width: 160, height: 160)
                 
                 Text("Log Migraine")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                    .font(.title)
+                    .fontWeight(.bold)
                     .foregroundColor(Theme.Colors.primaryText)
             }
             .frame(maxWidth: .infinity)
@@ -143,113 +140,83 @@ private struct QuickLogButton: View {
     }
 }
 
-private struct PendingEventCard: View {
+private struct LoggedMigraineCard: View {
     let event: MigraineEvent
+    let showActions: Bool
     let onDelete: () -> Void
     let onAddDetails: () -> Void
     
     var body: some View {
-        VStack(spacing: Theme.Spacing.extraLarge) {
-            // Simple header with time
-            VStack(spacing: Theme.Spacing.small) {
-                Image(systemName: "bolt.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(Theme.Colors.primaryAction)
+        VStack(spacing: Theme.Spacing.large) {
+            // Header with severe blob + checkmark
+            VStack(spacing: Theme.Spacing.extraLarge) {
+                // Multi-layer severe blob with checkmark
+                ZStack {
+                    // Base layer
+                    NestedBlob(
+                        outerSeed: 1,
+                        innerSeed: 2,
+                        outerSize: 110,
+                        innerSize: 90,
+                        innerOffset: CGSize(width: -6, height: -5),
+                        outerColor: Theme.Colors.Raw.lavenderGrey.opacity(0.5),
+                        innerColor: Theme.Colors.Raw.lavenderGrey.opacity(0.7)
+                    )
+                    
+                    // Mid layer
+                    NestedBlob(
+                        outerSeed: 3,
+                        innerSeed: 4,
+                        outerSize: 85,
+                        innerSize: 68,
+                        innerOffset: CGSize(width: 4, height: 3),
+                        outerColor: Theme.Colors.Raw.charcoal.opacity(0.4),
+                        innerColor: Theme.Colors.Raw.charcoal.opacity(0.6)
+                    )
+                    .offset(x: -8, y: -6)
+                    
+                    // Top layer
+                    NestedBlob(
+                        outerSeed: 5,
+                        innerSeed: 6,
+                        outerSize: 65,
+                        innerSize: 50,
+                        innerOffset: CGSize(width: -3, height: 2),
+                        outerColor: Theme.Colors.Raw.ironGrey.opacity(0.5),
+                        innerColor: Theme.Colors.Raw.ironGrey.opacity(0.8)
+                    )
+                    .offset(x: 6, y: 4)
+                    
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .frame(width: 110, height: 110)
                 
-                Text(event.loggedAt.formatted(date: .omitted, time: .shortened))
-                    .font(.title)
-                    .fontWeight(.bold)
+                Text("Migraine logged for today")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .multilineTextAlignment(.center)
             }
             
-            // Two big clean buttons
-            VStack(spacing: Theme.Spacing.medium) {
-                Button(action: onAddDetails) {
-                    HStack {
-                        Image(systemName: "square.and.pencil")
-                            .font(.title3)
-                        Text("Add Details")
-                            .font(.headline)
+            // Conditional buttons
+            if showActions {
+                HStack(spacing: Theme.Spacing.jumbo) {
+                    Button(action: onAddDetails) {
+                        Text("Details")
+                            .font(.body)
+                            .foregroundColor(Theme.Colors.primaryAction)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Theme.Spacing.large)
-                    .background(Theme.Colors.primaryAction)
-                    .foregroundColor(Theme.Colors.inverseText)
-                    .cornerRadius(Theme.CornerRadius.medium)
-                }
-                
-                Button(action: onDelete) {
-                    HStack {
-                        Image(systemName: "xmark")
-                            .font(.title3)
+                    
+                    Button(action: onDelete) {
                         Text("Delete")
-                            .font(.headline)
+                            .font(.body)
+                            .foregroundColor(Theme.Colors.secondaryText)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Theme.Spacing.large)
-                    .background(Theme.Colors.secondaryBackground)
-                    .foregroundColor(Theme.Colors.primaryText)
-                    .cornerRadius(Theme.CornerRadius.medium)
                 }
             }
         }
         .padding(Theme.Spacing.extraLarge)
-    }
-}
-
-private struct ConfirmationOverlay: View {
-    let onDelete: () -> Void
-    let onAddDetails: () -> Void
-    
-    var body: some View {
-        VStack(spacing: Theme.Spacing.extraLarge) {
-            // Big checkmark
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 70))
-                .foregroundColor(Theme.Colors.success)
-            
-            // Two simple buttons
-            VStack(spacing: Theme.Spacing.medium) {
-                Button(action: onAddDetails) {
-                    Text("Add Details")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Theme.Spacing.large)
-                        .background(Theme.Colors.primaryAction)
-                        .foregroundColor(Theme.Colors.inverseText)
-                        .cornerRadius(Theme.CornerRadius.medium)
-                }
-                
-                Button(action: onDelete) {
-                    Text("Delete")
-                        .font(.subheadline)
-                        .foregroundColor(Theme.Colors.secondaryText)
-                }
-            }
-        }
-        .padding(Theme.Spacing.extraLarge)
-        .frame(maxWidth: 300)
-        .background(Theme.Colors.cardBackground)
-        .cornerRadius(Theme.CornerRadius.extraLarge)
-        .shadow(color: Theme.Shadow.color, radius: Theme.Shadow.Radius.large)
-    }
-}
-
-private struct MinimalConfirmation: View {
-    var body: some View {
-        VStack(spacing: Theme.Spacing.medium) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 70))
-                .foregroundColor(Theme.Colors.success)
-            
-            Text("Saved")
-                .font(.title3)
-                .fontWeight(.semibold)
-        }
-        .padding(Theme.Spacing.extraLarge)
-        .background(Theme.Colors.cardBackground)
-        .cornerRadius(Theme.CornerRadius.extraLarge)
-        .shadow(color: Theme.Shadow.color, radius: Theme.Shadow.Radius.large)
-        .transition(.scale.combined(with: .opacity))
     }
 }
 

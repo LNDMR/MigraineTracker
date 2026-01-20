@@ -16,6 +16,11 @@ struct EventDetailView: View {
     
     @State private var showEditFlow = false
     @State private var showDeleteAlert = false
+    @State private var showDateEditor = false
+    @State private var editingDate = Date()
+    @State private var editingTime = Date()
+    @State private var showValidationError = false
+    @State private var validationMessage = ""
     
     // Computed property that always gets fresh data from store
     private var event: MigraineEvent? {
@@ -67,11 +72,22 @@ struct EventDetailView: View {
                     .environmentObject(SettingsManager())
             }
         }
+        .sheet(isPresented: $showDateEditor) {
+            dateEditorSheet
+        }
+        .alert("Cannot Change Date", isPresented: $showValidationError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(validationMessage)
+        }
         .alert("Delete Migraine Event?", isPresented: $showDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
                 if let event = event {
+                    print("🗑️ Deleting event with ID: \(event.id)")
+                    print("📊 Events before delete: \(store.events.count)")
                     store.deleteEvent(event)
+                    print("📊 Events after delete: \(store.events.count)")
                     dismiss()
                 }
             }
@@ -84,20 +100,31 @@ struct EventDetailView: View {
     private func eventContent(_ event: MigraineEvent) -> some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.large) {
-                // Header Card - always shown
-                VStack(spacing: Theme.Spacing.small) {
-                    Text(event.loggedAt, style: .date)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Text(event.loggedAt, style: .time)
-                        .font(.subheadline)
-                        .foregroundColor(Theme.Colors.secondaryText)
+                // Header Card - Tappable to edit date/time
+                Button(action: {
+                    editingDate = event.loggedAt
+                    editingTime = event.loggedAt
+                    showDateEditor = true
+                }) {
+                    VStack(spacing: Theme.Spacing.small) {
+                        HStack {
+                                Text(event.loggedAt, style: .date)
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                            
+                            Spacer()
+                            
+                            Image(systemName: "pencil.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(Theme.Colors.primaryAction.opacity(0.6))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(Theme.Spacing.regular)
+                    .background(Theme.Colors.secondaryBackground)
+                    .cornerRadius(Theme.CornerRadius.medium)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(Theme.Spacing.regular)
-                .background(Theme.Colors.secondaryBackground)
-                .cornerRadius(Theme.CornerRadius.medium)
+                .buttonStyle(.plain)
                 
                 // Show details only if promptForDetails is ON
                 if promptForDetails {
@@ -110,6 +137,92 @@ struct EventDetailView: View {
             }
             .padding(Theme.Spacing.regular)
         }
+    }
+    
+    private var dateEditorSheet: some View {
+        VStack(spacing: Theme.Spacing.large) {
+            Spacer()
+            
+            Text("Change Date")
+                .font(.title3)
+                .fontWeight(.semibold)
+            
+            Spacer()
+            
+            // Date Picker
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundColor(Theme.Colors.primaryAction)
+                    .frame(width: 30)
+                DatePicker("Date", selection: $editingDate, displayedComponents: .date)
+                Spacer()
+            }
+            .padding()
+            .background(Theme.Colors.secondaryBackground)
+            .cornerRadius(Theme.CornerRadius.medium)
+            .padding(.horizontal, Theme.Spacing.large)
+            
+            Spacer()
+            
+            // Save Button
+            Button(action: saveDateChange) {
+                Text("Save Changes")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Theme.Spacing.large)
+                    .background(Theme.Colors.primaryAction)
+                    .cornerRadius(Theme.CornerRadius.medium)
+            }
+            .padding(.horizontal, Theme.Spacing.large)
+            
+            // Cancel Button
+            Button(action: { showDateEditor = false }) {
+                Text("Cancel")
+                    .font(.body)
+                    .foregroundColor(Theme.Colors.secondaryText)
+                    .padding(.vertical, Theme.Spacing.small)
+            }
+            .padding(.bottom, Theme.Spacing.large)
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+    
+    private func saveDateChange() {
+        guard var updatedEvent = event else { return }
+        
+        // Combine new date with original time
+        let calendar = Calendar.current
+        let dateComponents = calendar.dateComponents([.year, .month, .day], from: editingDate)
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: updatedEvent.loggedAt)
+        
+        var combined = DateComponents()
+        combined.year = dateComponents.year
+        combined.month = dateComponents.month
+        combined.day = dateComponents.day
+        combined.hour = timeComponents.hour
+        combined.minute = timeComponents.minute
+        
+        let newDate = calendar.date(from: combined) ?? editingDate
+        
+        // Validate: Check if another event exists on this date (excluding current event)
+        let conflictingEvent = store.events.first { otherEvent in
+            otherEvent.id != eventID && calendar.isDate(otherEvent.loggedAt, inSameDayAs: newDate)
+        }
+        
+        if let conflict = conflictingEvent {
+            validationMessage = "A migraine is already logged for \(newDate.formatted(date: .long, time: .omitted)). Delete that event first if you want to move this one there."
+            showValidationError = true
+            return
+        }
+        
+        // Update event with new date but keep original time
+        updatedEvent.loggedAt = newDate
+        store.updateEvent(updatedEvent)
+        
+        // Close sheet
+        showDateEditor = false
     }
     
     // MARK: - No Details Prompt
