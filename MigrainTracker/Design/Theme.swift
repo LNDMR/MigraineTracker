@@ -19,6 +19,9 @@ struct Theme {
             static let sageGreen = Color("SageGreen")
             static let softMint = Color("SoftMint")
             static let adobeRed = Color("AdobeRed")
+            static let sageMist = Color("SageMist")
+            static let softCeladon = Color("SoftCeladon")
+            static let deepSage = Color("DeepSage")
         }
         
         // Semantic UI colors

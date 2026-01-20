@@ -124,8 +124,8 @@ private struct QuickLogButton: View {
                         outerSize: 160,
                         innerSize: 125,
                         innerOffset: CGSize(width: -8, height: -6),
-                        outerColor: Theme.Colors.primaryAction.opacity(0.3),
-                        innerColor: Theme.Colors.primaryAction.opacity(0.6)
+                        outerColor: Theme.Colors.Raw.sageMist.opacity(0.3),
+                        innerColor: Theme.Colors.Raw.sageMist.opacity(0.6)
                     )
                     
                     Image(systemName: "bolt.fill")
@@ -165,8 +165,8 @@ private struct LoggedMigraineCard: View {
                         outerSize: 110,
                         innerSize: 90,
                         innerOffset: CGSize(width: -6, height: -5),
-                        outerColor: Theme.Colors.Raw.lavenderGrey.opacity(0.5),
-                        innerColor: Theme.Colors.Raw.lavenderGrey.opacity(0.7)
+                        outerColor: Theme.Colors.Raw.sageMist.opacity(0.5),
+                        innerColor: Theme.Colors.Raw.sageMist.opacity(0.7)
                     )
                     
                     // Mid layer
@@ -176,8 +176,8 @@ private struct LoggedMigraineCard: View {
                         outerSize: 85,
                         innerSize: 68,
                         innerOffset: CGSize(width: 4, height: 3),
-                        outerColor: Theme.Colors.Raw.charcoal.opacity(0.4),
-                        innerColor: Theme.Colors.Raw.charcoal.opacity(0.6)
+                        outerColor: Theme.Colors.Raw.softCeladon.opacity(0.4),
+                        innerColor: Theme.Colors.Raw.softCeladon.opacity(0.6)
                     )
                     .offset(x: -8, y: -6)
                     
@@ -188,8 +188,8 @@ private struct LoggedMigraineCard: View {
                         outerSize: 65,
                         innerSize: 50,
                         innerOffset: CGSize(width: -3, height: 2),
-                        outerColor: Theme.Colors.Raw.ironGrey.opacity(0.5),
-                        innerColor: Theme.Colors.Raw.ironGrey.opacity(0.8)
+                        outerColor: Theme.Colors.Raw.deepSage.opacity(0.5),
+                        innerColor: Theme.Colors.Raw.deepSage.opacity(0.8)
                     )
                     .offset(x: 6, y: 4)
                     

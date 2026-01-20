@@ -71,8 +71,8 @@ struct OrganicPainVisual: View {
                 outerSize: 250,
                 innerSize: 200,
                 innerOffset: CGSize(width: -15, height: -10),
-                outerColor: Theme.Colors.Raw.lavenderGrey.opacity(0.4),
-                innerColor: Theme.Colors.Raw.lavenderGrey.opacity(0.6)
+                outerColor: Theme.Colors.Raw.sageMist.opacity(0.4),
+                innerColor: Theme.Colors.Raw.sageMist.opacity(0.6)
             )
             
             // MODERATE: Add 2 more nested blob pairs (bigger and closer to center)
@@ -83,8 +83,8 @@ struct OrganicPainVisual: View {
                     outerSize: 200,
                     innerSize: 160,
                     innerOffset: CGSize(width: 10, height: 8),
-                    outerColor: Theme.Colors.Raw.charcoal.opacity(0.3),
-                    innerColor: Theme.Colors.Raw.charcoal.opacity(0.5)
+                    outerColor: Theme.Colors.Raw.softCeladon.opacity(0.3),
+                    innerColor: Theme.Colors.Raw.softCeladon.opacity(0.5)
                 )
                 .offset(x: -20, y: -15)
                 .transition(.scale.combined(with: .opacity))
@@ -95,8 +95,8 @@ struct OrganicPainVisual: View {
                     outerSize: 170,
                     innerSize: 130,
                     innerOffset: CGSize(width: -8, height: 6),
-                    outerColor: Theme.Colors.Raw.charcoal.opacity(0.35),
-                    innerColor: Theme.Colors.Raw.charcoal.opacity(0.55)
+                    outerColor: Theme.Colors.Raw.deepSage.opacity(0.35),
+                    innerColor: Theme.Colors.Raw.deepSage.opacity(0.55)
                 )
                 .offset(x: 25, y: 20)
                 .transition(.scale.combined(with: .opacity))
