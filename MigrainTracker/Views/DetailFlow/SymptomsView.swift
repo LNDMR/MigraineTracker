@@ -45,14 +45,7 @@ struct SymptomsView: View {
                 // No symptoms configured - show setup prompt
                 
                 VStack(spacing: Theme.Spacing.large) {
-                    Image(systemName: "list.bullet.circle")
-                        .font(.system(size: 60))
-                        .foregroundColor(Theme.Colors.primaryAction.opacity(0.5))
-                    
-                    Text("Customize your symptom list")
-                        .font(.headline)
-                    
-                    Text("Select the symptoms you typically experience to make logging faster")
+                    Text("Only see the symptoms that matter to you")
                         .font(.subheadline)
                         .foregroundColor(Theme.Colors.secondaryText)
                         .multilineTextAlignment(.center)
@@ -61,7 +54,7 @@ struct SymptomsView: View {
                     Button {
                         showSymptomPicker = true
                     } label: {
-                        Text("Set Up Symptoms")
+                        Text("Manage Symptoms")
                             .fontWeight(.semibold)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Theme.Spacing.regular)
