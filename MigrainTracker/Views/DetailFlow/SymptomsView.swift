@@ -54,10 +54,10 @@ struct SymptomsView: View {
                     Button {
                         showSymptomPicker = true
                     } label: {
-                        Text("Manage Symptoms")
-                            .fontWeight(.semibold)
+                        Text("Choose Symptoms")
+                            .fontWeight(.medium)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, Theme.Spacing.regular)
+                            .padding(.vertical, Theme.Spacing.small)
                             .background(Theme.Colors.primaryAction)
                             .foregroundColor(Theme.Colors.inverseText)
                             .cornerRadius(Theme.CornerRadius.medium)
