@@ -24,11 +24,7 @@ struct HistoryView: View {
         NavigationStack {
             CalendarView(
                 selectedEvent: $selectedEvent,
-                showEventDetail: $showEventDetail,
-                onEmptyDayTapped: { date in
-                    confirmationDate = date
-                    showCreateConfirmation = true
-                }
+                showEventDetail: $showEventDetail
             )
             .navigationTitle("History")
             .navigationDestination(isPresented: $showEventDetail) {

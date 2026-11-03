@@ -11,17 +11,17 @@ struct Theme {
     struct Colors {
         // Base colors from Assets
         struct Raw {
-            static let aliceBlue = Color("AliceBlue")
+            static let aliceBlue = Color("AliceBlue") // #DCEDFF
             static let powderBlue = Color("PowderBlue")  // Reserved for future use
-            static let lavenderGrey = Color("LavenderGrey")
-            static let ironGrey = Color("IronGrey")
-            static let charcoal = Color("Charcoal")
-            static let sageGreen = Color("SageGreen")
-            static let softMint = Color("SoftMint")
-            static let adobeRed = Color("AdobeRed")
-            static let sageMist = Color("SageMist")
-            static let softCeladon = Color("SoftCeladon")
-            static let deepSage = Color("DeepSage")
+            static let lavenderGrey = Color("LavenderGrey") // #8F91A2
+            static let ironGrey = Color("IronGrey") // #343F3E
+            static let charcoal = Color("Charcoal") // #505A5B
+            static let sageGreen = Color("SageGreen") // #8CAA9B
+            static let softMint = Color("SoftMint") // #B4D7C8
+            static let adobeRed = Color("AdobeRed") // #C17070
+            static let sageMist = Color("SageMist") // #9BA59E
+            static let softCeladon = Color("SoftCeladon") // #6A7871
+            static let deepSage = Color("DeepSage") // #4A5552
         }
         
         // Semantic UI colors

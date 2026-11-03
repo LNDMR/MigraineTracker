@@ -65,7 +65,7 @@ struct TrackingPreferencesView: View {
             // MARK: - Quick Log Behavior
             Section {
                 HStack(alignment: .center) {
-                    Text("Prompt for Details")
+                    Text("Track Details")
                         .font(.body)
                     
                     Spacer()
@@ -78,7 +78,7 @@ struct TrackingPreferencesView: View {
             } header: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Quick Log Behavior")
-                    Text("Choose whether to prompt for details after quick logging")
+                    Text("Record more details after a Quick Log")
                         .font(.caption)
                         .textCase(.none)
                         .foregroundColor(Theme.Colors.secondaryText)

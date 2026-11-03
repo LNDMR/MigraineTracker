@@ -9,6 +9,7 @@ import SwiftUI
 
 struct EventDetailView: View {
     @EnvironmentObject var store: MigraineStore
+    @EnvironmentObject var settingsManager: SettingsManager
     @Environment(\.dismiss) private var dismiss
     @AppStorage("promptForDetails") private var promptForDetails = true
     
@@ -20,6 +21,8 @@ struct EventDetailView: View {
     @State private var editingDate = Date()
     @State private var showValidationError = false
     @State private var validationMessage = ""
+    @State private var editorMonth: Date = Date()
+    @State private var editorWeekCount: Int = 6
     
     // Computed property that always gets fresh data from store
     private var event: MigraineEvent? {
@@ -46,6 +49,7 @@ struct EventDetailView: View {
         }
         .navigationTitle("Migraine Details")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
         .toolbar {
             if event != nil, promptForDetails {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -77,7 +81,7 @@ struct EventDetailView: View {
         .fullScreenCover(isPresented: $showEditFlow) {
             AddAttackDetailsFlow(eventID: eventID, store: store)
                 .environmentObject(store)
-                .environmentObject(SettingsManager())
+                .environmentObject(settingsManager)
         }
         .sheet(isPresented: $showDateEditor) {
             dateEditorSheet
@@ -142,7 +146,7 @@ struct EventDetailView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, Theme.Spacing.large)
+                    .padding(.vertical, Theme.Spacing.small)
                     .background(Theme.Colors.primaryAction)
                     .cornerRadius(Theme.CornerRadius.medium)
             }
@@ -153,97 +157,153 @@ struct EventDetailView: View {
     
     @ViewBuilder
     private func detailsContent(for event: MigraineEvent) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.extraLarge) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             
-            // Onset Time
             if let onset = event.symptomsOnsetTime {
-                let preposition = onset == .night ? "at" : "in the"
-                Text("Symptoms began \(preposition) \(onset.label.lowercased())")
-                    .font(.body)
-                    .foregroundColor(Theme.Colors.primaryText)
-                
+                detailRow(icon: onset.icon, label: "Onset", value: onset.label)
                 Divider()
             }
             
-            // Duration
             if let duration = event.duration {
-                Text("Attack lasted \(duration.label.lowercased())")
-                    .font(.body)
-                    .foregroundColor(Theme.Colors.primaryText)
-                
+                detailRow(icon: iconForDuration(duration), label: "Duration", value: duration.label)
                 Divider()
             }
             
-            // Pain Level (context-aware tense)
             if let painLevel = event.painLevel {
-                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    Text("Pain level \(isToday ? "is" : "was") \(painLevel.label.lowercased())")
+                HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+                    Image(systemName: "bolt.fill")
                         .font(.body)
-                        .foregroundColor(Theme.Colors.primaryText)
+                        .foregroundColor(Theme.Colors.primaryAction)
+                        .frame(width: 20)
+                        .padding(.top, 2)
                     
-                    Text(painDescription(for: painLevel))
-                        .font(.subheadline)
-                        .foregroundColor(Theme.Colors.secondaryText)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Pain level")
+                            .font(.subheadline)
+                            .foregroundColor(Theme.Colors.secondaryText)
+                        Text(painLevel.label)
+                            .font(.body)
+                            .foregroundColor(Theme.Colors.primaryText)
+                        Text(painDescription(for: painLevel))
+                            .font(.subheadline)
+                            .foregroundColor(Theme.Colors.secondaryText)
+                    }
                 }
+                .padding(.vertical, Theme.Spacing.small)
                 
                 Divider()
             }
             
-            // Symptoms
+            // Symptoms — badges in a wrapping layout, heartbeat icon
             if let symptoms = event.symptoms, !symptoms.isEmpty {
-                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                    Text("Experienced")
+                HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+                    Image(systemName: "waveform.path.ecg")
                         .font(.body)
-                        .foregroundColor(Theme.Colors.primaryText)
+                        .foregroundColor(Theme.Colors.primaryAction)
+                        .frame(width: 20)
+                        .padding(.top, 2)
                     
-                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                        ForEach(symptoms, id: \.self) { symptom in
-                            HStack(spacing: Theme.Spacing.small) {
-                                Text("•")
-                                    .foregroundColor(Theme.Colors.primaryAction)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Symptoms")
+                            .font(.subheadline)
+                            .foregroundColor(Theme.Colors.secondaryText)
+                        
+                        FlowLayout(spacing: 6) {
+                            ForEach(symptoms, id: \.self) { symptom in
                                 Text(symptom)
-                                    .font(.body)
+                                    .font(.subheadline)
+                                    .foregroundColor(Theme.Colors.primaryText)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Theme.Colors.secondaryBackground)
+                                    .cornerRadius(Theme.CornerRadius.medium)
                             }
                         }
                     }
                 }
+                .padding(.vertical, Theme.Spacing.small)
                 
                 Divider()
             }
             
-            // Medication
-            if let medication = event.medication {
-                HStack {
-                    Text("Took \(medication)")
+            if !event.medications.isEmpty {
+                HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+                    Image(systemName: "pills")
                         .font(.body)
-                        .foregroundColor(Theme.Colors.primaryText)
+                        .foregroundColor(Theme.Colors.primaryAction)
+                        .frame(width: 20)
+                        .padding(.top, 2)
                     
-                    if let helped = event.medicationHelped {
-                        Text(helped ? " - it helped" : " - it didn't help")
-                            .font(.body)
-                            .foregroundColor(helped ? Theme.Colors.success : Theme.Colors.error)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Medication")
+                            .font(.subheadline)
+                            .foregroundColor(Theme.Colors.secondaryText)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(event.medications) { entry in
+                                (Text(entry.name)
+                                    .foregroundColor(Theme.Colors.primaryText)
+                                 + Text(medicationSuffix(for: entry))
+                                    .foregroundColor(entry.helped == true ? Theme.Colors.success : Theme.Colors.error)
+                                )
+                                .font(.body)
+                            }
+                        }
                     }
                 }
+                .padding(.vertical, Theme.Spacing.small)
                 
                 Divider()
             }
             
-            // Notes
             if let notes = event.notes, !notes.isEmpty {
-                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text("Notes")
-                        .font(.caption)
-                        .fontWeight(.semibold)
+                        .font(.subheadline)
                         .foregroundColor(Theme.Colors.secondaryText)
-                        .textCase(.uppercase)
-                    
                     Text(notes)
                         .font(.body)
                         .foregroundColor(Theme.Colors.secondaryText)
                         .lineSpacing(4)
                 }
+                .padding(.vertical, Theme.Spacing.small)
             }
         }
+    }
+
+    @ViewBuilder
+    private func detailRow(icon: String, label: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundColor(Theme.Colors.primaryAction)
+                .frame(width: 20)
+                .padding(.top, 2)
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundColor(Theme.Colors.secondaryText)
+                Text(value)
+                    .font(.body)
+                    .foregroundColor(Theme.Colors.primaryText)
+            }
+        }
+        .padding(.vertical, Theme.Spacing.small)
+    }
+
+    private func iconForDuration(_ duration: MigraineEvent.Duration) -> String {
+        switch duration {
+        case .short: return "clock"
+        case .medium: return "clock.badge.checkmark"
+        case .long: return "clock.arrow.circlepath"
+        case .veryLong: return "hourglass"
+        }
+    }
+
+    private func medicationSuffix(for entry: MigraineEvent.MedicationEntry) -> String {
+        guard let helped = entry.helped else { return "" }
+        return helped ? " — helped" : " — didn't help"
     }
     
     // Convert pain description to past tense if not today
@@ -262,55 +322,63 @@ struct EventDetailView: View {
             return "I was completely out of action"
         }
     }
-    
+
     private var dateEditorSheet: some View {
         VStack(spacing: Theme.Spacing.large) {
-            Spacer()
-            
-            Text("Change Date")
-                .font(.title3)
-                .fontWeight(.semibold)
-            
-            Spacer()
-            
-            // Date Picker
             HStack {
-                Image(systemName: "calendar")
-                    .foregroundColor(Theme.Colors.primaryAction)
-                    .frame(width: 30)
-                DatePicker("Date", selection: $editingDate, displayedComponents: .date)
+                Button("Cancel") {
+                    showDateEditor = false
+                }
+                .foregroundColor(Theme.Colors.primaryAction)
+                
                 Spacer()
+                
+                Button("Save") {
+                    saveDateChange()
+                }
+                .foregroundColor(Theme.Colors.primaryAction)
+                .fontWeight(.semibold)
             }
-            .padding()
-            .background(Theme.Colors.secondaryBackground)
-            .cornerRadius(Theme.CornerRadius.medium)
             .padding(.horizontal, Theme.Spacing.large)
+            .padding(.top, Theme.Spacing.large)
+            
+            MonthGridView(
+                currentMonth: $editorMonth,
+                hasEvent: { date in
+                    store.events.contains { Calendar.current.isDate($0.loggedAt, inSameDayAs: date) }
+                },
+                isSelected: { date in
+                    Calendar.current.isDate(date, inSameDayAs: editingDate)
+                },
+                isDisabled: { date in
+                    // Only disabled if a DIFFERENT entry occupies this date —
+                    // the event's own current date should stay tappable (it's a no-op, not a conflict)
+                    guard let match = store.events.first(where: {
+                        Calendar.current.isDate($0.loggedAt, inSameDayAs: date)
+                    }) else { return false }
+                    return match.id != eventID
+                },
+                onSelectDate: { date in
+                    editingDate = date
+                },
+                onWeekCountChange: { weeks in
+                    editorWeekCount = weeks
+                }
+            )
             
             Spacer()
-            
-            // Save Button
-            Button(action: saveDateChange) {
-                Text("Save Changes")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Theme.Spacing.large)
-                    .background(Theme.Colors.primaryAction)
-                    .cornerRadius(Theme.CornerRadius.medium)
-            }
-            .padding(.horizontal, Theme.Spacing.large)
-            
-            // Cancel Button
-            Button(action: { showDateEditor = false }) {
-                Text("Cancel")
-                    .font(.body)
-                    .foregroundColor(Theme.Colors.secondaryText)
-                    .padding(.vertical, Theme.Spacing.small)
-            }
-            .padding(.bottom, Theme.Spacing.large)
         }
-        .presentationDetents([.height(280)])
+        .onAppear {
+            editorMonth = editingDate
+        }
+        .presentationDetents([.height(sheetHeight)])
         .presentationDragIndicator(.visible)
+    }
+    
+    private var sheetHeight: CGFloat {
+        let baseHeight: CGFloat = 180 // Cancel/Save row + month nav + weekday header + paddings
+        let rowHeight: CGFloat = Theme.Size.touchTarget + Theme.Spacing.small
+        return baseHeight + (CGFloat(editorWeekCount) * rowHeight)
     }
     
     private func saveDateChange() {
@@ -331,6 +399,7 @@ struct EventDetailView: View {
         let newDate = calendar.date(from: combined) ?? editingDate
         
         // Validate: Check if another event exists on this date (excluding current event)
+        // Kept as a safety net — the grid's isDisabled should make this unreachable in normal use.
         let conflictingEvent = store.events.first { otherEvent in
             otherEvent.id != eventID && calendar.isDate(otherEvent.loggedAt, inSameDayAs: newDate)
         }
@@ -351,5 +420,49 @@ struct EventDetailView: View {
     
     private func severityColor(for level: MigraineEvent.PainLevel) -> Color {
         level.color
+    }
+}
+
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+    
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var currentRowWidth: CGFloat = 0
+        var totalHeight: CGFloat = 0
+        var currentRowHeight: CGFloat = 0
+        
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if currentRowWidth + size.width > maxWidth, currentRowWidth > 0 {
+                totalHeight += currentRowHeight + spacing
+                currentRowWidth = size.width + spacing
+                currentRowHeight = size.height
+            } else {
+                currentRowWidth += size.width + spacing
+                currentRowHeight = max(currentRowHeight, size.height)
+            }
+        }
+        totalHeight += currentRowHeight
+        
+        return CGSize(width: maxWidth == .infinity ? currentRowWidth : maxWidth, height: totalHeight)
+    }
+    
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var currentRowHeight: CGFloat = 0
+        
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > bounds.maxX, x > bounds.minX {
+                x = bounds.minX
+                y += currentRowHeight + spacing
+                currentRowHeight = 0
+            }
+            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            currentRowHeight = max(currentRowHeight, size.height)
+        }
     }
 }

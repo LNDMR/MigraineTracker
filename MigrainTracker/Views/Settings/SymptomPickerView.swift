@@ -59,16 +59,15 @@ struct SymptomPickerView: View {
                                 Button {
                                     addCustomSymptom()
                                 } label: {
-                                    Text("Add")
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(Theme.Colors.primaryAction)
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(Theme.Colors.success)
                                 }
                             }
                             
                             Button {
                                 cancelAddSymptom()
                             } label: {
-                                Image(systemName: "xmark.circle")
+                                Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(Theme.Colors.secondaryText)
                             }
                         }

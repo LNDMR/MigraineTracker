@@ -81,13 +81,9 @@ struct AddAttackDetailsFlow: View {
                 .tag(3)
                 
                 MedicationView(
-                    medication: Binding(
-                        get: { event.medication },
-                        set: { event.medication = $0 }
-                    ),
-                    medicationHelped: Binding(
-                        get: { event.medicationHelped },
-                        set: { event.medicationHelped = $0 }
+                    medications: Binding(
+                        get: { event.medications },
+                        set: { event.medications = $0 }
                     )
                 )
                 .tag(4)

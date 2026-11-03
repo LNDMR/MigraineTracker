@@ -143,8 +143,7 @@ final class MigraineStore: ObservableObject {
             event.duration = .medium
             event.painLevel = .severe
             event.symptoms = ["Sensitivity to light", "Nausea", "Throbbing pain"]
-            event.medication = "Ibuprofen 400mg"
-            event.medicationHelped = true
+            event.medications = [MigraineEvent.MedicationEntry(name: "Ibuprofen 400mg", helped: true)]
             event.notes = "Started after waking up. Had to stay in dark room most of the day."
             sampleEvents.append(event)
         }
@@ -156,8 +155,7 @@ final class MigraineStore: ObservableObject {
             event.duration = .short
             event.painLevel = .moderate
             event.symptoms = ["Throbbing pain", "Sensitivity to light"]
-            event.medication = "Paracetamol"
-            event.medicationHelped = false
+            event.medications = [MigraineEvent.MedicationEntry(name: "Paracetamol", helped: false)]
             sampleEvents.append(event)
         }
         
@@ -171,15 +169,17 @@ final class MigraineStore: ObservableObject {
             sampleEvents.append(event)
         }
         
-        // Event 5: 1 week ago - severe with lots of symptoms
+        // Event 5: 1 week ago - severe with lots of symptoms, two medications tried
         if let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: now) {
             var event = MigraineEvent(loggedAt: oneWeekAgo)
             event.symptomsOnsetTime = .night
             event.duration = .veryLong
             event.painLevel = .severe
             event.symptoms = ["Throbbing pain", "Nausea", "Sensitivity to light", "Sensitivity to sound", "Dizziness"]
-            event.medication = "Sumatriptan 50mg"
-            event.medicationHelped = true
+            event.medications = [
+                MigraineEvent.MedicationEntry(name: "Paracetamol", helped: false),
+                MigraineEvent.MedicationEntry(name: "Sumatriptan 50mg", helped: true)
+            ]
             event.notes = "Worst migraine in months. Had to call in sick."
             sampleEvents.append(event)
         }
@@ -198,8 +198,7 @@ final class MigraineStore: ObservableObject {
             event.duration = .long
             event.painLevel = .severe
             event.symptoms = ["Throbbing pain", "Visual disturbances", "Nausea"]
-            event.medication = "Ibuprofen 600mg"
-            event.medicationHelped = true
+            event.medications = [MigraineEvent.MedicationEntry(name: "Ibuprofen 600mg", helped: true)]
             sampleEvents.append(event)
         }
         
@@ -220,8 +219,7 @@ final class MigraineStore: ObservableObject {
             event.duration = .veryLong
             event.painLevel = .severe
             event.symptoms = ["Throbbing pain", "Nausea", "Sensitivity to light", "Vomiting"]
-            event.medication = "Sumatriptan 100mg"
-            event.medicationHelped = true
+            event.medications = [MigraineEvent.MedicationEntry(name: "Sumatriptan 100mg", helped: true)]
             event.notes = "Triggered by stress at work. Lasted through the night."
             sampleEvents.append(event)
         }
@@ -233,8 +231,7 @@ final class MigraineStore: ObservableObject {
             event.duration = .short
             event.painLevel = .mild
             event.symptoms = ["Mild headache", "Fatigue"]
-            event.medication = "Paracetamol"
-            event.medicationHelped = true
+            event.medications = [MigraineEvent.MedicationEntry(name: "Paracetamol", helped: true)]
             sampleEvents.append(event)
         }
         
@@ -265,8 +262,7 @@ final class MigraineStore: ObservableObject {
             event.duration = .long
             event.painLevel = .severe
             event.symptoms = ["Throbbing pain", "Nausea", "Sensitivity to light"]
-            event.medication = "Ibuprofen 400mg"
-            event.medicationHelped = false
+            event.medications = [MigraineEvent.MedicationEntry(name: "Ibuprofen 400mg", helped: false)]
             sampleEvents.append(event)
         }
         
@@ -289,22 +285,15 @@ final class MigraineStore: ObservableObject {
     
     /// Returns a sorted list of all unique medications used (most recent first)
     var usedMedications: [String] {
-        // Get all unique medications that have been used
-        let medications = events
-            .compactMap { $0.medication }
-            .filter { !$0.isEmpty }
-        
-        // Use dictionary to track first occurrence (most recent)
         var seen: [String: Date] = [:]
         for event in events {
-            if let med = event.medication, !med.isEmpty {
-                if seen[med] == nil {
-                    seen[med] = event.loggedAt
+            for entry in event.medications where !entry.name.isEmpty {
+                if seen[entry.name] == nil {
+                    seen[entry.name] = event.loggedAt
                 }
             }
         }
         
-        // Sort by most recently used
         return seen.sorted { $0.value > $1.value }.map { $0.key }
     }
     

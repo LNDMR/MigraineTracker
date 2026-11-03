@@ -17,8 +17,7 @@ struct MigraineEvent: Identifiable, Codable, Equatable {
     var duration: Duration?
     var painLevel: PainLevel?
     var symptoms: [String]?
-    var medication: String?
-    var medicationHelped: Bool?
+    var medications: [MedicationEntry] = []
     var notes: String?
     
     var hasDetails: Bool {
@@ -26,8 +25,16 @@ struct MigraineEvent: Identifiable, Codable, Equatable {
                duration != nil ||
                painLevel != nil ||
                symptoms != nil ||
-               medication != nil ||
+               !medications.isEmpty ||
                notes != nil
+    }
+    
+    // MARK: - Medication Entry
+    
+    struct MedicationEntry: Codable, Identifiable, Equatable {
+        var id: UUID = UUID()
+        var name: String
+        var helped: Bool?
     }
     
     // MARK: - Pain Level

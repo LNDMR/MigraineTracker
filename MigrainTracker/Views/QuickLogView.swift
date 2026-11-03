@@ -9,11 +9,11 @@ import SwiftUI
 
 struct QuickLogView: View {
     @EnvironmentObject var store: MigraineStore
+    @EnvironmentObject var settingsManager: SettingsManager
     @AppStorage("promptForDetails") private var promptForDetails = true
     
     @State private var showDetailsFlow = false
     @State private var lastLoggedEventID: UUID?
-    @State private var cardDismissed = false
     
     // Check for ANY event today
     private var todaysEvent: MigraineEvent? {
@@ -23,32 +23,19 @@ struct QuickLogView: View {
         }
     }
     
-    private var shouldShowCard: Bool {
-        guard let event = todaysEvent else { return false }
-        
-        if promptForDetails {
-            // Toggle ON: Only show if no details and not dismissed
-            return !event.hasDetails && !cardDismissed
-        } else {
-            // Toggle OFF: Always show (for delete access)
-            return true
-        }
-    }
-    
     var body: some View {
         NavigationStack {
             VStack {
                 Spacer()
                 
-                if let event = todaysEvent, shouldShowCard {
-                    // Event exists and should show card
+                if let event = todaysEvent {
+                    // Any event logged today — always show the logged state
                     LoggedMigraineCard(
                         event: event,
                         showDetailsButton: promptForDetails,
                         onDelete: {
                             withAnimation {
                                 store.deleteEvent(event)
-                                cardDismissed = false
                             }
                         },
                         onAddDetails: {
@@ -67,25 +54,8 @@ struct QuickLogView: View {
             }
             .navigationTitle("Quick Log")
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: todaysEvent?.id)
-            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: shouldShowCard)
             .fullScreenCover(isPresented: $showDetailsFlow) {
                 detailsFlowView
-            }
-            .onChange(of: store.events.count) { oldValue, newValue in
-                // Reset card dismissed when event is deleted
-                if newValue < oldValue {
-                    cardDismissed = false
-                }
-            }
-            .onChange(of: showDetailsFlow) { _, isShowing in
-                if !isShowing {
-                    // Reset card dismissed state after returning from details flow
-                    cardDismissed = false
-                }
-            }
-            .onChange(of: promptForDetails) { _, _ in
-                // Reset state when toggle changes
-                cardDismissed = false
             }
         }
     }
@@ -95,7 +65,7 @@ struct QuickLogView: View {
             if let eventID = lastLoggedEventID {
                 AddAttackDetailsFlow(eventID: eventID, store: store)
                     .environmentObject(store)
-                    .environmentObject(SettingsManager())
+                    .environmentObject(settingsManager)
             }
         }
     }
@@ -104,7 +74,6 @@ struct QuickLogView: View {
         let newEvent = MigraineEvent(loggedAt: Date())
         lastLoggedEventID = newEvent.id
         store.updateEvent(newEvent)
-        cardDismissed = false
     }
 }
 
@@ -229,4 +198,5 @@ private struct LoggedMigraineCard: View {
 #Preview {
     QuickLogView()
         .environmentObject(MigraineStore())
+        .environmentObject(SettingsManager())
 }

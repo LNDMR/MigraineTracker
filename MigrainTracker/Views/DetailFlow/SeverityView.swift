@@ -20,7 +20,7 @@ struct SeverityView: View {
 
             
             // Organic layered pain visual
-            VStack(spacing: Theme.Spacing.large) {
+            VStack(spacing: Theme.Spacing.jumbo) {
                 OrganicPainVisual(painLevel: painLevel ?? .mild)
                     .frame(height: 250)
                     .onTapGesture {

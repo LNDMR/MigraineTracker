@@ -14,32 +14,12 @@ struct SymptomsView: View {
     @State private var showSymptomPicker = false
     
     var body: some View {
-        VStack(spacing: Theme.Spacing.large) {
-            VStack(spacing: Theme.Spacing.small) {
-                Text("Which symptoms did you experience?")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, Theme.Spacing.huge)
-                
-                if settingsManager.hasConfiguredSymptoms {
-                    // Subtle manage button at bottom
-                    Button {
-                        showSymptomPicker = true
-                    } label: {
-                        HStack(spacing: Theme.Spacing.small) {
-                            Image(systemName: "gear")
-                                .font(.caption)
-                            Text("Manage Symptoms")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                        }
-                        .foregroundColor(Theme.Colors.secondaryText)
-                        .padding(.vertical, Theme.Spacing.small)
-                    }
-                    .padding(.bottom, Theme.Spacing.medium)
-                }
-            }
+        VStack(spacing: Theme.Spacing.jumbo) {
+            Text("Which symptoms did you experience?")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .multilineTextAlignment(.center)
+                .padding(.top, Theme.Spacing.huge)
             
             if !settingsManager.hasConfiguredSymptoms {
                 // No symptoms configured - show setup prompt
@@ -88,6 +68,22 @@ struct SymptomsView: View {
                         .padding(.horizontal, Theme.Spacing.extraLarge)
                         .padding(.bottom, Theme.Spacing.medium)
                     }
+                    
+                    // Subtle manage button at bottom
+                    Button {
+                        showSymptomPicker = true
+                    } label: {
+                        HStack(spacing: Theme.Spacing.small) {
+                            Image(systemName: "gear")
+                                .font(.caption)
+                            Text("Manage Symptoms")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(Theme.Colors.secondaryText)
+                        .padding(.vertical, Theme.Spacing.small)
+                    }
+                    .padding(.bottom, Theme.Spacing.medium)
                 }
             }
         }

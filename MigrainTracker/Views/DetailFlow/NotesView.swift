@@ -13,7 +13,7 @@ struct NotesView: View {
     
     var body: some View {
         VStack(spacing: Theme.Spacing.jumbo) {
-            Text("Any additional notes you want to add?")
+            Text("Any additional notes to add?")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .multilineTextAlignment(.center)
@@ -21,18 +21,19 @@ struct NotesView: View {
                 .padding(.horizontal)
             
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                TextEditor(text: $notesText)
-                    .frame(height: 200)
-                    .padding(Theme.Spacing.small)
-                    .background(Theme.Colors.secondaryBackground)
-                    .cornerRadius(Theme.CornerRadius.medium)
-                    .onChange(of: notesText) { _, newValue in
-                        notes = newValue.isEmpty ? nil : newValue
-                    }
-                
-                Text("Optional: Add triggers, activities, or anything else relevant")
-                    .font(.caption)
-                    .foregroundColor(Theme.Colors.secondaryText)
+                ZStack(alignment: .topLeading) {
+                    
+                    TextEditor(text: $notesText)
+                        .font(.body)
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: 100, maxHeight: 160)
+                        .padding(Theme.Spacing.small)
+                        .onChange(of: notesText) { _, newValue in
+                            notes = newValue.isEmpty ? nil : newValue
+                        }
+                }
+                .background(Theme.Colors.secondaryBackground)
+                .cornerRadius(Theme.CornerRadius.medium)
             }
             .padding(.horizontal, Theme.Spacing.extraLarge)
             
